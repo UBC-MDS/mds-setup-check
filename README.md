@@ -1,7 +1,7 @@
 # mds-setup-check
 
-A small Python project used to verify a UBC Master of Data Science software
-stack installation. It is referenced from the MDS installation guides:
+A small project used to verify a UBC Master of Data Science software stack
+installation. It is referenced from the MDS installation guides:
 
 - [macOS](https://ubc-mds.github.io/resources_pages/install_ds_stack_mac)
 - [Ubuntu](https://ubc-mds.github.io/resources_pages/install_ds_stack_ubuntu)
@@ -31,6 +31,34 @@ uv run python --version
 uv run jupyter lab
 ```
 
+To check that you can produce PDFs, render every document in the project:
+
+```bash
+make
+```
+
+That runs the three routes MDS uses, in order, and stops at the first one that
+fails so you can see the error:
+
+| document | rendered by | what it proves |
+| --- | --- | --- |
+| `check-quarto.qmd` | `uv run quarto render` | Quarto can find this project's Python, start a kernel, and typeset the result with LaTeX |
+| `check-notebook.ipynb` | `uv run jupyter nbconvert` | the same route as JupyterLab's `File -> Save and Export Notebook As... -> PDF`, which goes through pandoc |
+| `check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
+
+Each document prints its versions and ends with a line of accented and Greek
+characters, so opening the PDFs also tells you whether LaTeX has the fonts it
+needs.
+
+There is one more route that does not use LaTeX at all:
+
+```bash
+uv run playwright install chromium   # once, downloads a browser
+make webpdf
+```
+
+`make clean` deletes everything the renders produced.
+
 **Keep this folder until you have submitted your setup check log.** The
 `check-setup-mds.sh` script looks for it at `~/mds-setup-check`.
 
@@ -41,19 +69,28 @@ uv run jupyter lab
 | `pyproject.toml` | the list of packages the MDS stack needs |
 | `uv.lock` | the exact resolved versions, so everybody gets the same ones |
 | `.python-version` | the Python version this project runs on |
-| `setup-check.qmd` | Quarto fixture — has a Python code chunk, so rendering it to PDF proves Quarto can find and run this project's Python |
-| `setup-check.ipynb` | Jupyter notebook fixture — used for the JupyterLab PDF and WebPDF export checks |
+| `Makefile` | renders every document to PDF |
+| `check-quarto.qmd` | Quarto fixture, with a Python code chunk |
+| `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
+| `check-rmarkdown.Rmd` | R Markdown fixture |
 
 ## For instructors
 
-This project doubles as the reference shape for an MDS assignment repo. See
-the assignment workflow document for what a course repo should declare and
-why `uv.lock` is committed.
+This project doubles as the reference shape for an MDS assignment repo. See the
+assignment workflow document for what a course repo should declare and why
+`uv.lock` is committed.
 
-Two things are deliberate and should be preserved if this file is copied:
+Three things here are deliberate and should be preserved if this file is copied:
 
 - `ipykernel` is a real dependency, not a dev dependency. `jupyterlab` would
   pull it in anyway, but an autograding image built with `uv sync --no-dev`
   would then have no Python kernel at all.
 - `nbconvert[webpdf]` is named explicitly. `otter-grader` already requires it,
   but naming it records that MDS depends on WebPDF export directly.
+- `check-rmarkdown.Rmd` asks for `latex_engine: xelatex`. R Markdown's default
+  pdflatex cannot typeset the accented characters that turn up in real student
+  work, and it fails with an error that does not obviously point at the engine.
+
+Note that the fixtures are not empty files. An empty notebook has no markdown
+cells, so rendering one never calls pandoc and passes on machines where PDF
+export of a real assignment would fail.

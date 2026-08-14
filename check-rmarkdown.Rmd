@@ -1,0 +1,35 @@
+---
+title: "MDS setup check: R Markdown"
+author: "UBC Master of Data Science"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+## What this file checks
+
+Knitting this document to PDF exercises R, `rmarkdown`, `knitr`, pandoc and
+LaTeX together.
+
+Note the `latex_engine: xelatex` in the header above. R Markdown uses pdflatex
+by default, which cannot typeset the characters at the bottom of this page.
+
+```{r}
+R.version$version.string
+```
+
+```{r}
+data.frame(
+  course = c("DSCI 511", "DSCI 521", "DSCI 523"),
+  block = c(1, 1, 2),
+  language = c("Python", "Python", "R")
+)
+```
+
+## Characters that are not plain English
+
+Assignments regularly contain accents, Greek letters, degree signs and proper
+dashes. If the line below appears correctly in the PDF, your LaTeX installation
+can typeset them:
+
+Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20
