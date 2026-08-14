@@ -1,0 +1,13 @@
+.venv/
+
+# Output of the setup checks
+*.pdf
+*.html
+check-setup-mds.log
+
+# Quarto scratch
+/.quarto/
+**/*.quarto_ipynb
+
+.ipynb_checkpoints/
+__pycache__/

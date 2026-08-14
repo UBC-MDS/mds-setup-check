@@ -1,0 +1,41 @@
+---
+title: "MDS setup check"
+author: "UBC Master of Data Science"
+format: pdf
+---
+
+## What this file checks
+
+Rendering this document to PDF exercises the whole toolchain in one step.
+Quarto has to find this project's Python, start a Jupyter kernel in it, run the
+code below, and hand the result to LaTeX.
+
+If you get a PDF, all of those pieces work.
+
+## Python and pandas
+
+```{python}
+import sys
+import pandas as pd
+
+print(sys.version)
+print("pandas", pd.__version__)
+```
+
+```{python}
+pd.DataFrame(
+    {
+        "course": ["DSCI 511", "DSCI 521", "DSCI 523"],
+        "block": [1, 1, 2],
+        "language": ["Python", "Python", "R"],
+    }
+)
+```
+
+## Characters that are not plain English
+
+Assignments regularly contain accents, Greek letters, degree signs and proper
+dashes. If the line below appears correctly in the PDF, your LaTeX installation
+can typeset them:
+
+Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · "curly quotes"
