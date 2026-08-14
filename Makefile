@@ -1,14 +1,20 @@
 # Renders every document in this project to PDF.
 #
-#   make          render all three documents
-#   make clean    delete the rendered files
-#   make webpdf   render the notebook without LaTeX, using a headless browser
+#   make             render all three documents
+#   make clean       delete the rendered files
+#   make webpdf      render the notebook without LaTeX, using a headless browser
+#   make r-packages  install this project's R packages without rendering anything
 #
-# Each Python command is prefixed with `uv run`, which is what gives it the
-# packages belonging to this project. R is not managed by uv, so the R Markdown
-# rule calls Rscript directly.
+# This project carries its own packages for both languages, so it does not matter
+# what else is installed on the machine:
+#
+#   Python  uv     installs into .venv       from pyproject.toml and uv.lock
+#   R       renv   installs into renv/library from renv.lock
+#
+# Each Python command is therefore prefixed with `uv run`, and the R rule starts
+# by asking renv to make sure the R library matches the lockfile.
 
-.PHONY: all clean webpdf
+.PHONY: all clean webpdf r-packages
 
 all: check-quarto.pdf check-notebook.pdf check-rmarkdown.pdf
 
@@ -25,8 +31,16 @@ check-notebook.pdf: check-notebook.ipynb
 
 # R Markdown is rendered by R itself. The document asks for xelatex, because the
 # pdflatex that R Markdown uses by default cannot typeset accented characters.
-check-rmarkdown.pdf: check-rmarkdown.Rmd
-	Rscript -e 'rmarkdown::render("$<", output_format = "pdf_document")'
+# `renv::restore()` runs first so that this works on a machine where rmarkdown was
+# never installed globally; when the library already matches renv.lock it is a
+# no-op. `prompt = FALSE` keeps it from asking anything.
+check-rmarkdown.pdf: check-rmarkdown.Rmd renv.lock
+	Rscript -e 'renv::restore(prompt = FALSE); rmarkdown::render("$<", output_format = "pdf_document")'
+
+# Install this project's R packages without rendering anything. Useful on its own
+# the first time, since it is the step that can take a while.
+r-packages:
+	Rscript -e 'renv::restore(prompt = FALSE)'
 
 # Not part of `make all`, because it needs a copy of Chromium that you download
 # once with `uv run playwright install chromium`.

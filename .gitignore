@@ -11,3 +11,10 @@ check-setup-mds.log
 
 .ipynb_checkpoints/
 __pycache__/
+
+# R Markdown intermediates, in case a render is interrupted before it tidies up
+*.knit.md
+*.tex
+check-rmarkdown_files/
+.Rproj.user/
+.Rhistory

@@ -31,6 +31,19 @@ uv run python --version
 uv run jupyter lab
 ```
 
+The R packages work the same way, managed by
+[renv](https://rstudio.github.io/renv/) instead of uv:
+
+```bash
+make r-packages
+```
+
+which is shorthand for `Rscript -e 'renv::restore(prompt = FALSE)'`. It installs
+the versions recorded in `renv.lock` into `renv/library`, so the R side of this
+project runs the same way for everybody and does not depend on what you happen
+to have installed globally. On Ubuntu this is the slowest step in the project;
+give it a few minutes the first time.
+
 To check that you can produce PDFs, render every document in the project:
 
 ```bash
@@ -66,9 +79,11 @@ make webpdf
 
 | file | what it is for |
 | --- | --- |
-| `pyproject.toml` | the list of packages the MDS stack needs |
-| `uv.lock` | the exact resolved versions, so everybody gets the same ones |
+| `pyproject.toml` | the Python packages the MDS stack needs |
+| `uv.lock` | the exact resolved Python versions, so everybody gets the same ones |
 | `.python-version` | the Python version this project runs on |
+| `renv.lock` | the same idea for R packages |
+| `.Rprofile`, `renv/` | how R finds this project's own package library |
 | `Makefile` | renders every document to PDF |
 | `check-quarto.qmd` | Quarto fixture, with a Python code chunk |
 | `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
@@ -94,3 +109,13 @@ Three things here are deliberate and should be preserved if this file is copied:
 Note that the fixtures are not empty files. An empty notebook has no markdown
 cells, so rendering one never calls pandoc and passes on machines where PDF
 export of a real assignment would fail.
+
+`renv.lock` deliberately contains only what `check-rmarkdown.Rmd` needs, which
+is `rmarkdown` and its dependencies. It is not a copy of the R packages the
+installation guides ask students to install globally — the setup check script
+verifies those separately, against the user library. The two are different
+questions: "does your machine have the MDS R stack" and "can this project
+install its own R packages reproducibly".
+
+The R version in `renv.lock` is set to the version the installation guides ask
+for. renv warns, but proceeds, when the running R has a different minor version.
