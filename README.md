@@ -91,9 +91,10 @@ make webpdf
 
 ## For instructors
 
-This project doubles as the reference shape for an MDS assignment repo. See the
-assignment workflow document for what a course repo should declare and why
-`uv.lock` is committed.
+This project doubles as the reference shape for an MDS assignment repo.
+[assignment-workflow-uv.md](assignment-workflow-uv.md) covers what a course repo
+must declare, why `uv.lock` is committed, how PDFs get produced, and the failure
+modes students will report.
 
 Three things here are deliberate and should be preserved if this file is copied:
 
