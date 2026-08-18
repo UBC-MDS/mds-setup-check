@@ -60,6 +60,14 @@ def main() -> int:
     check(".venv" in gitignore, "3", ".gitignore covers .venv")
     check("requires-python" in pyproject["project"], "3",
           "requires-python is set")
+    # The Windows install guide has students set git to check out CRLF, so without
+    # this a Makefile and every .sh arrive with carriage returns: bash fails on the
+    # shebang and make appends \r to every argument. This repo is the template those
+    # repos are copied from, so losing the file here propagates the breakage.
+    gitattributes = (root / ".gitattributes").read_text(encoding="utf-8")
+    for pattern in ("*.sh", "Makefile"):
+        check(f"{pattern} " in gitattributes and "eol=lf" in gitattributes, "3",
+              f".gitattributes pins {pattern} to LF")
 
     # §5: the routes the guides promise. A Makefile target per route means the
     # promise is executable rather than prose.

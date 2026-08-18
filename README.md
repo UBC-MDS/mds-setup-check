@@ -9,11 +9,20 @@ installation. It is referenced from the MDS installation guides:
 
 ## For students
 
-Clone it into your home folder, so that the setup check script can find it
-later:
+**You do not normally clone this yourself.** Running the setup check at the end of
+your install guide downloads it into `~/mds-setup-check` for you.
+
+That script makes the folder itself and will not reuse one that is already there —
+it has no way to tell a fresh clone from last year's copy or an interrupted
+download, so rather than measure something it did not create, it skips the Python
+package and document export checks entirely. **Cloning into `~/mds-setup-check`
+by hand is therefore the one thing that stops the setup check working.** If you
+already have that folder, delete it and re-run the script.
+
+To work in the project directly — to reproduce the render matrix below, say —
+clone it anywhere *other* than `~/mds-setup-check`:
 
 ```bash
-cd ~
 git clone https://github.com/UBC-MDS/mds-setup-check.git
 cd mds-setup-check
 uv sync
@@ -46,9 +55,10 @@ Then render every document by every route:
 make -k all
 ```
 
-`-k` matters. One route is known not to work — a notebook containing a markdown
-table cannot be exported to PDF by nbconvert — and without `-k` make stops at that
-failure, so the routes after it never run at all.
+`-k` matters. One route is known not to work — `check-notebook-table.ipynb` cannot
+be exported to PDF by nbconvert, which is the whole reason that fixture exists —
+and without `-k` make stops at that failure, so the routes after it never run at
+all.
 
 Then check that the results are actually correct:
 
@@ -62,6 +72,10 @@ install. It also refuses to certify an output that is older than the document it
 came from, so re-running it on a machine that has since broken cannot pass on last
 month's files.
 
+`make matrix-check` is a separate gate, and the one that keeps this file honest: it
+regenerates the tables below from the rendered files and fails if the committed
+block has drifted from them.
+
 `make` on its own lists every target with a one-line description, so you do not
 have to read this file to remember them.
 
@@ -73,6 +87,7 @@ have to read this file to remember them.
 | `check-quarto-r.qmd` | `uv run quarto render` | Quarto finds R and runs it — a different path from R Markdown |
 | `check-notebook.ipynb` | `uv run jupyter nbconvert` | the same route as JupyterLab's `File -> Save and Export Notebook As... -> PDF`, which goes through pandoc |
 | `check-notebook.ipynb` | `uv run quarto render` | the same notebook through Quarto instead — the workaround when the export menu fails |
+| `check-notebook-table.ipynb` | both of the above | isolates the one construct the export menu cannot handle, so the failure is attributable rather than just present |
 | `check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
 | `check-rmarkdown.Rmd` | `uv run quarto render` | Quarto reads `.Rmd` as well, so the same document has two routes |
 
@@ -89,11 +104,17 @@ that goes wrong often enough not to be worth meeting in week one.
 
 ### What renders where
 
-Every fixture contains the same features, so any difference below is a property of
-the toolchain rather than the document. **This is measured, not asserted** —
-`make matrix` regenerates these tables from the rendered files, and `make check`
-fails if any cell stops being true. It also fails if an output is older than the document
-it came from, so a table cannot be certified by last month's renders.
+The four full fixtures contain the same features, so any difference between them
+below is a property of the toolchain rather than the document.
+`check-notebook-table.ipynb` is the exception: it holds one construct and nothing
+else, and a dash means the fixture does not contain that feature at all, which is
+a different statement from a cross.
+
+**This is measured, not asserted** — `make matrix` regenerates these tables from
+the rendered files, `make matrix-check` fails if the committed block has drifted
+from them, and `make check` fails if a route stops containing what that route
+should contain. `make check` also fails if an output is older than the document it
+came from, so a table cannot be certified by last month's renders.
 
 **The tables show this machine.** One route differs by platform, marked below.
 
@@ -171,8 +192,8 @@ Three things are worth knowing before writing an assignment:
 
 `make clean` deletes everything the renders produced.
 
-**Keep this folder until you have submitted your setup check log.** The
-`check-setup-mds.sh` script looks for it at `~/mds-setup-check`.
+You can delete `~/mds-setup-check` once you have submitted your log. The script
+does not look for it — it creates it — so the next run makes it again.
 
 ## What is in here
 
@@ -187,11 +208,14 @@ Three things are worth knowing before writing an assignment:
 | `check-quarto-py.qmd` | Quarto fixture, Python |
 | `check-quarto-r.qmd` | Quarto fixture, R |
 | `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
+| `check-notebook-table.ipynb` | one markdown table and nothing else: the single construct JupyterLab's PDF export cannot handle |
 | `check-rmarkdown.Rmd` | R Markdown fixture |
 | `ci/assert-renders.py` | checks the rendered files contain what they should, per route |
 | `ci/assert-contract.py` | checks this repo still matches what `assignment-workflow-uv.md` describes |
 | `ci/feature-matrix.py` | measures which features survive which route, and prints the tables above |
 | `ci/check-matrix-block.py` | fails if those tables have drifted from the rendered files |
+| `ci/run-setup-check.py` | attaches a terminal to `check-setup-mds.sh` so CI can answer its prompts |
+| `.github/workflows/assignment-workflow.yml` | the CI described under **For instructors** below |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
 | `mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
 | [`using-atkinson-hyperlegible.md`](using-atkinson-hyperlegible.md) | optional: how to set a document in the Atkinson Hyperlegible typeface |
@@ -216,6 +240,54 @@ This project doubles as the reference shape for an MDS assignment repo.
 [assignment-workflow-uv.md](assignment-workflow-uv.md) covers what a course repo
 must declare, why `uv.lock` is committed, how PDFs get produced, and the failure
 modes students will report.
+
+### How this is tested, and what a green build does not prove
+
+[`.github/workflows/assignment-workflow.yml`](.github/workflows/assignment-workflow.yml)
+runs on every push, every pull request, and every Monday — the schedule matters
+because this repository can sit unchanged for months while everything that breaks
+it moves upstream. It renders every route on macOS, Ubuntu and Windows, checks the
+content of what came out, and runs `check-setup-mds.sh` end to end the way a
+student does.
+
+A green badge is a narrower claim than it looks. **Read this list before treating
+CI as evidence that the install guides work.**
+
+- **The student script is executed on Ubuntu only.** Its macOS branch (`mdls` for
+  RStudio, the `/Library/PostgreSQL` scan, bash 3.2 patterns) and its Windows
+  branch (`tlmgr.bat`, `reg query`, `$LOCALAPPDATA`) have no execution coverage at
+  all. Those two branches are also where most of its platform-specific code lives.
+- **Nothing asserts on a `MISSING` line.** The end-to-end step runs to completion
+  regardless, and the check that follows greps for four specific strings. Every
+  version pattern in the script could be wrong and CI would still be green.
+- **The version patterns are substring tests, not version tests.** `R=4.*` accepts
+  `R version 5.0.0 (2027-04-20)` — it matches the `04` in the date. `latex=3.*`
+  cannot fail at all, because pdfTeX's version string is π. See
+  [#7](https://github.com/UBC-MDS/mds-setup-check/issues/7).
+- **The R packages the guides tell students to install are installed by nothing
+  here.** `tidyverse`, `janitor`, `gapminder`, `readxl`, `usethis`, `devtools`,
+  `languageserver`, and — most fragile — `ottr` and `canlang`, which install from
+  git HEAD and can break with nobody touching anything. `renv.lock` answers a
+  different question (see below) and shares three packages with that list.
+- **Several programs are never installed on a runner**, so their checks are
+  exercised nowhere: Positron, RStudio, PostgreSQL, Docker, XQuartz and Rtools.
+- **The Python packages section of the log cannot fail for anything a student
+  did.** The script clones this repository, runs `uv sync` against the committed
+  `uv.lock`, and then reports the versions it just installed. What it genuinely
+  proves is that `uv` works and the network was reachable.
+- **TinyTeX is installed by a GitHub action, not by the route the guides give
+  students.** The guides use `tinytex::install_tinytex()` followed by a logout, and
+  it is precisely that PATH step they warn about — which is therefore verified on
+  no platform. The 22-package `tlmgr` list *is* checked, and does match the guides.
+- **`check-python-installs.sh` is fetched from the live site at run time**, so a
+  pull request testing the end-to-end script is testing the *published* copy of
+  that half, not the branch's.
+
+The route-level limitations are a different matter and are kept honest
+mechanically: they live in `KNOWN_TO_FAIL` in
+[`ci/assert-renders.py`](ci/assert-renders.py), the footnotes under the tables above
+are generated from that same list, and a route that starts working fails the build
+rather than being silently absorbed.
 
 Three things here are deliberate and should be preserved if this file is copied:
 
