@@ -175,13 +175,28 @@ jobs:
           uv run --no-dev jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
           grep -q python3 /tmp/kernels.txt || { echo "no Python kernel after --no-dev"; exit 1; }
 
-      # The script students actually run, end to end, against the branch under test.
-      # This is the check that would have caught both defects the council review found:
-      # a fixture renamed everywhere except here, and a fixture whose image was never
-      # copied. Linux only -- it is the same script on all three platforms, and one run
-      # is enough to know that every route it names still resolves.
+      # Serves this checkout so the setup check fetches THIS branch's
+      # check-python-installs.sh rather than the copy already published. Without it a
+      # pull request touching that script tests the released version, and that script is
+      # the first MDS code a new student ever runs.
+      - name: Serve this branch to the setup check
+        run: |
+          uv run --no-sync python -m http.server 8127 --bind 127.0.0.1 > "$RUNNER_TEMP/http.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -Ssf http://127.0.0.1:8127/check-python-installs.sh -o /dev/null && break
+            sleep 1
+          done
+          curl -Ssf http://127.0.0.1:8127/check-python-installs.sh -o /dev/null \
+            || { echo "the local server never came up"; cat "$RUNNER_TEMP/http.log"; exit 1; }
+
+      # The script students actually run, end to end, against the branch under test, on
+      # every platform. It used to be Linux only, on the reasoning that it is the same
+      # script everywhere. It is not: it has three substantially different platform
+      # branches, and the two that never ran are where the bugs were. Three student-facing
+      # defects shipped behind that `if:` -- the last one, Git Bash reporting
+      # OSTYPE=cygwin, was already true on this very runner and would have failed here on
+      # the first push.
       - name: Run the setup check the way a student does
-        if: matrix.os == 'ubuntu-latest'
         run: |
           # The script clones the check project from GitHub. Pointing it at this checkout
           # instead tests the code in the pull request rather than the code already
@@ -190,21 +205,71 @@ jobs:
           # nothing at all.
           git -C "$GITHUB_WORKSPACE" checkout -q -B ci-under-test
           cd "$RUNNER_TEMP"
-          # Driven through a pseudo-terminal by ci/run-setup-check.py, which answers each
-          # prompt only after seeing it. Both prompts are guarded by `[ -t 0 ]` and default
-          # to no without a terminal -- deliberately, so that a piped or scheduled run can
-          # never record a student's environment -- and feeding a pty from a plain pipe
-          # misaligns the answers, which was verified rather than assumed.
-          MDS_PROJECT_URL="$GITHUB_WORKSPACE" \
+          export MDS_PROJECT_URL="$GITHUB_WORKSPACE"
+          export MDS_BASE_URL="http://127.0.0.1:8127"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # Python's pty is Unix-only, so the prompts cannot be driven here. Run it
+            # without a terminal instead: both prompts then take their safe default of
+            # no, which skips the Python and document-export sections but still exercises
+            # every line above them -- the OS detection and the system-program checks,
+            # which is exactly where the platform branches live and where all three of
+            # the defects above were. What Windows does NOT cover is asserted on Linux
+            # and macOS below.
+            bash "$GITHUB_WORKSPACE/check-setup-mds.sh" < /dev/null || true
+          else
+            # Driven through a pseudo-terminal by ci/run-setup-check.py, which answers each
+            # prompt only after seeing it. Both prompts are guarded by `[ -t 0 ]` and default
+            # to no without a terminal -- deliberately, so that a piped or scheduled run can
+            # never record a student's environment -- and feeding a pty from a plain pipe
+            # misaligns the answers, which was verified rather than assumed.
             python3 "$GITHUB_WORKSPACE/ci/run-setup-check.py" \
-            "$GITHUB_WORKSPACE/check-setup-mds.sh" || true
+              "$GITHUB_WORKSPACE/check-setup-mds.sh" || true
+          fi
           echo "----- the log a student would submit -----"
-          sed 's/\x1b\[[0-9;]*m//g' check-setup-mds.log
+          cat check-setup-mds.log
 
       - name: The setup check must find its fixtures and keep the log clean
-        if: matrix.os == 'ubuntu-latest'
         run: |
-          log=$(sed 's/\x1b\[[0-9;]*m//g' "$RUNNER_TEMP/check-setup-mds.log")
+          log=$(cat "$RUNNER_TEMP/check-setup-mds.log")
+
+          # The log must arrive without escape codes. It used to carry them, so an
+          # instructor opening a submitted log read `^[[0;33m## System programs^[[0m`,
+          # and this job had to strip them before it could assert on anything.
+          if printf '%s' "$log" | grep -q "$(printf '\033')"; then
+            echo "FAIL: the log a student submits still contains terminal escape codes"
+            exit 1
+          fi
+
+          # ---- the platform branch actually taken -------------------------------
+          # This is the regression test for the defect that started this: Git Bash
+          # began reporting OSTYPE=cygwin, the msys test stopped matching, and every
+          # Windows check fell through to the Linux branch -- which shows up here, as
+          # an operating system the script could not name.
+          if grep -q "Operating system verison could not be detected" <<< "$log"; then
+            echo "FAIL: the script did not recognise this platform, so it used the wrong"
+            echo "      branch for every check below. The shell it saw:"
+            grep "^Shell:" <<< "$log"
+            exit 1
+          fi
+          case "$RUNNER_OS" in
+            Windows)
+              grep -qE "^Windows (10|11)" <<< "$log" \
+                || { echo "FAIL: the Windows branch was not taken"; grep "^Shell:" <<< "$log"; exit 1; }
+              # tlmgr is `tlmgr.bat` on Windows and `tlmgr` everywhere else, and the
+              # Linux branch looks for the wrong one. TinyTeX is installed above, so an
+              # OK here proves the Windows-specific lookup ran.
+              grep -q "^OK.*tlmgr" <<< "$log" \
+                || { echo "FAIL: tlmgr not found; the tlmgr.bat lookup did not run"; exit 1; }
+              ;;
+            macOS)
+              grep -q "ProductName" <<< "$log" \
+                || { echo "FAIL: the macOS branch was not taken"; exit 1; }
+              ;;
+            Linux)
+              grep -q "Operating System:" <<< "$log" \
+                || { echo "FAIL: the Linux branch was not taken"; exit 1; }
+              ;;
+          esac
 
           # A fixture named by the script but absent from the project. This is the exact
           # shape of the check-quarto.qmd rename that went unnoticed for three commits.
@@ -212,6 +277,19 @@ jobs:
             echo "FAIL: the script names a fixture the project does not contain:"
             grep "could not be tested since check-" <<< "$log"
             exit 1
+          fi
+
+          # ---- everything below needed the prompts answered ---------------------
+          # Skipped on Windows, where Python's pty is unavailable, so the run there took
+          # the no-terminal path and never set the project up. Say so rather than
+          # letting a green Windows job imply more than it checked.
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            grep -q "no terminal attached" <<< "$log" \
+              || { echo "FAIL: expected the no-terminal path on Windows"; exit 1; }
+            echo "Windows: platform branch and system-program checks verified."
+            echo "NOT verified here (no pty): the Python package and document-export"
+            echo "sections. Those are covered on Linux and macOS."
+            exit 0
           fi
 
           # The Quarto routes are the ones MDS asks students to use, so they are the ones
@@ -224,6 +302,11 @@ jobs:
           # Nothing about the environment reaches the log unless the student says yes.
           grep -q "Not recorded. You were asked" <<< "$log" \
             || { echo "FAIL: the environment section did not default to not-recorded"; exit 1; }
+
+          # The Python audit half must have come from this branch's copy, not the
+          # published one -- that is what MDS_BASE_URL pointing at the local server buys.
+          grep -q "Python installations already on this computer" <<< "$log" \
+            || { echo "FAIL: the Python installation report did not run"; exit 1; }
 
           echo "the setup check found its fixtures, rendered through Quarto, and recorded"
           echo "no environment variables"
