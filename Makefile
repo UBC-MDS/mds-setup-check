@@ -49,12 +49,15 @@ all: pdf typst html webpdf  ## Render every document by every route
 # after the input alone gets eaten by whichever route runs next.
 LATEX_OUT = check-quarto-py-latex.pdf check-quarto-r-latex.pdf \
             check-notebook-quarto-latex.pdf check-rmarkdown-quarto-latex.pdf \
-            check-notebook-nbconvert-latex.pdf check-rmarkdown-rmarkdown-latex.pdf
+            check-notebook-nbconvert-latex.pdf check-rmarkdown-rmarkdown-latex.pdf \
+            check-notebook-table-nbconvert-latex.pdf \
+            check-notebook-table-quarto-latex.pdf
 TYPST_OUT = check-quarto-py-typst.pdf check-quarto-r-typst.pdf \
             check-notebook-quarto-typst.pdf check-rmarkdown-quarto-typst.pdf
 HTML_OUT  = check-quarto-py.html check-quarto-r.html \
             check-notebook-quarto.html check-rmarkdown-quarto.html \
-            check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html
+            check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html \
+            check-notebook-table-nbconvert.html
 WEBPDF_OUT = check-notebook-nbconvert-web.pdf
 
 # Four documents in three input formats, three renderers, four output formats. Quarto can render every input
@@ -100,6 +103,20 @@ check-notebook-nbconvert-latex.pdf: check-notebook.ipynb
 
 check-notebook-nbconvert.html: check-notebook.ipynb
 	uv run jupyter nbconvert $< --to html --output $(basename $@)
+
+# --- the markdown table, alone -----------------------------------------------
+# One construct, three routes. nbconvert's HTML is fine and Quarto's LaTeX is fine,
+# so when the first of these fails it is neither nbconvert nor LaTeX at fault: it is
+# nbconvert's LaTeX template. Keeping the table out of check-notebook.ipynb is what
+# lets that notebook export from JupyterLab, which is what students are told to do.
+check-notebook-table-nbconvert-latex.pdf: check-notebook-table.ipynb
+	uv run jupyter nbconvert $< --to pdf --output $(basename $@)
+
+check-notebook-table-nbconvert.html: check-notebook-table.ipynb
+	uv run jupyter nbconvert $< --to html --output $(basename $@)
+
+check-notebook-table-quarto-latex.pdf: check-notebook-table.ipynb
+	uv run quarto render $< --to pdf --output $@
 
 # --- rmarkdown: rendered by R itself -----------------------------------------
 check-rmarkdown-rmarkdown-latex.pdf: check-rmarkdown.Rmd

@@ -44,11 +44,13 @@ KNOWN_TO_FAIL = {
         "playwright drives the browser through asyncio subprocesses, which raise "
         "NotImplementedError on Windows in this Python. WebPDF export therefore "
         "does not work there; the same notebook exports fine on macOS and Linux."),
-    "check-notebook-nbconvert-latex.pdf":
+    "check-notebook-table-nbconvert-latex.pdf":
         "nbconvert's LaTeX template emits \\LTcaptype{none} for a markdown table, "
-        "which this TeX Live rejects with \"No counter 'none' defined\". Any notebook "
-        "containing a markdown table fails JupyterLab's PDF export for the same "
-        "reason. Rendering the same notebook through Quarto works, table and all.",
+        "which this TeX Live rejects with \"No counter 'none' defined\". A notebook "
+        "containing a markdown table fails JupyterLab's PDF export for this reason, "
+        "and one without a table exports fine -- which is why the table lives in a "
+        "fixture of its own. Rendering the same notebook through Quarto works, "
+        "table and all.",
 }
 KNOWN_TO_FAIL = {k: (v if isinstance(v, tuple) else (None, v))
                  for k, v in KNOWN_TO_FAIL.items()}
@@ -63,6 +65,10 @@ def is_known(name: str) -> bool:
 
 QMD_PY, QMD_R = "check-quarto-py.qmd", "check-quarto-r.qmd"
 IPYNB, RMD = "check-notebook.ipynb", "check-rmarkdown.Rmd"
+# The one construct JupyterLab's PDF export cannot handle, kept on its own so the
+# matrix can say both things: that the notebook route works, and exactly what
+# breaks it. If its LaTeX row ever turns green, nbconvert has fixed the bug.
+TABLE = "check-notebook-table.ipynb"
 
 # produced file -> (label, route class, the document it was rendered from)
 ROUTES = {
@@ -83,29 +89,52 @@ ROUTES = {
     "check-rmarkdown-quarto.html":        ("Rmd     -> Quarto -> HTML",      FULL,  RMD),
     "check-rmarkdown-rmarkdown-latex.pdf":("Rmd     -> rmarkdown -> LaTeX",  LATEX, RMD),
     "check-rmarkdown-rmarkdown.html":     ("Rmd     -> rmarkdown -> HTML",   FULL,  RMD),
+    # Three routes over one table, which is the smallest set that locates the fault:
+    # nbconvert's HTML is fine and Quarto's LaTeX is fine, so it is neither nbconvert
+    # nor LaTeX. It is nbconvert's LaTeX template.
+    "check-notebook-table-nbconvert-latex.pdf":
+                                          ("table   -> nbconvert -> LaTeX",  LATEX, TABLE),
+    "check-notebook-table-nbconvert.html": ("table   -> nbconvert -> HTML",   FULL,  TABLE),
+    "check-notebook-table-quarto-latex.pdf":
+                                          ("table   -> Quarto -> LaTeX",     LATEX, TABLE),
 }
 
-# (label, needles, supported-by). A check passes if ANY needle is present, which
-# matters because the same character can extract differently per engine: LaTeX sets
-# maths in U+1D6FD MATHEMATICAL ITALIC SMALL BETA, not U+03B2.
+# (label, needles, supported-by, source marker). A check passes if ANY needle is
+# present, which matters because the same character can extract differently per
+# engine: LaTeX sets maths in U+1D6FD MATHEMATICAL ITALIC SMALL BETA, not U+03B2.
+#
+# The source marker is what makes a check apply. A fixture that does not contain the
+# construct is not asked about it, so a new fixture needs no special case here: it is
+# measured for what it holds. Without this, splitting the markdown table into its own
+# file would have reported every other notebook route as having lost a table it was
+# never supposed to have.
 CHECKS = [
-    ("accented latin", ["Montréal"],        {LATEX, TYPST, FULL}),
-    ("degree sign",    ["°"],               {LATEX, TYPST, FULL}),
-    ("en dash",        ["–"],               {LATEX, TYPST, FULL}),
-    ("curly quotes",   ["“", "”"],          {LATEX, TYPST, FULL}),
+    ("accented latin", ["Montréal"],        {LATEX, TYPST, FULL}, "Montréal"),
+    ("degree sign",    ["°"],               {LATEX, TYPST, FULL}, "°C"),
+    ("en dash",        ["–"],               {LATEX, TYPST, FULL}, "10 – 20"),
+    ("curly quotes",   ["“", "”"],          {LATEX, TYPST, FULL}, "“curly quotes”"),
     # OLS appears in the fixtures only inside the inline equation, so this check fails
     # if the maths stops being typeset. It used to accept "unbiased", which is the prose
     # next to the equation, and so passed whatever happened to the maths.
-    ("inline maths",   ["OLS"],             {LATEX, TYPST, FULL}),
-    ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}),
-    ("aligned eqns",   ["Var"],             {LATEX, TYPST, FULL}),
-    ("literal Greek",  ["α"],               {TYPST, FULL}),
-    ("emoji",          ["✅", "📊"],         {TYPST, FULL}),
+    ("inline maths",   ["OLS"],             {LATEX, TYPST, FULL}, r"\mathrm{OLS}"),
+    ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}, r"\mathrm{RSS}"),
+    ("aligned eqns",   ["Var"],             {LATEX, TYPST, FULL}, r"\mathrm{Var}"),
+    ("literal Greek",  ["α"],               {TYPST, FULL},        "α β γ"),
+    ("emoji",          ["✅", "📊"],         {TYPST, FULL},        "📊"),
     # The four the README's table publishes and the gate used to leave ungated. An
     # unchecked column is a column that can quietly stop being true.
-    ("middot",         ["·"],               {LATEX, TYPST, FULL}),
-    ("numbered eqn",   ["𝜎", "σ"],          {LATEX, TYPST, FULL}),
-    ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}),
+    ("middot",         ["·"],               {LATEX, TYPST, FULL}, " · "),
+    # MSE for the same reason as OLS above: the numbered equation used to be checked
+    # with "σ", which every fixture also prints as prose two sections further down, so
+    # on the routes that keep literal Greek the check passed whether or not the
+    # equation was typeset at all. Keying on a token that exists only inside the
+    # equation immediately turned up what that was hiding -- Typst is NOT in the
+    # supported set below, because a bare \begin{equation} is a raw LaTeX environment
+    # that pandoc passes through untranslated, exactly like the \begin{align} the
+    # fixtures already warn about. Typst receives no maths and renders nothing, with
+    # no error. LaTeX and HTML both set it correctly.
+    ("numbered eqn",   ["MSE"],             {LATEX, FULL},        r"\mathrm{MSE}"),
+    ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}, "| you want |"),
 ]
 
 # The image is not text, so it needs a probe of its own rather than a needle.
@@ -122,6 +151,26 @@ def has_image(path: pathlib.Path) -> bool:
         if "/XObject" in resources:
             return True
     return False
+
+
+_source_cache: dict[str, str] = {}
+
+
+def source_text(name: str) -> str:
+    """The prose and code of a fixture, as written rather than as rendered.
+
+    A notebook keeps its text in JSON, so reading the file raw would match markers
+    against escaped source lines and metadata. Cached because every route asks the
+    same handful of files the same questions.
+    """
+    if name not in _source_cache:
+        raw = pathlib.Path(name).read_text(encoding="utf-8")
+        if name.endswith(".ipynb"):
+            import json
+            raw = "\n".join("".join(cell["source"])
+                            for cell in json.loads(raw)["cells"])
+        _source_cache[name] = raw
+    return _source_cache[name]
 
 
 def text_of(path: pathlib.Path) -> str:
@@ -166,7 +215,10 @@ def main() -> int:
             continue
 
         problems = []
-        for desc, needles, supported in CHECKS:
+        written = source_text(source)
+        for desc, needles, supported, marker in CHECKS:
+            if marker not in written:
+                continue          # this fixture does not contain the construct
             present = any(n in body for n in needles)
             if kind in supported and not present:
                 problems.append(f"missing {desc} ({needles[0]!r})")
@@ -176,7 +228,7 @@ def main() -> int:
                     f"expected to support it; update ci/assert-renders.py")
         # Engines differ in what they leave behind for a glyph they cannot set:
         # lualatex extracts as U+FFFD, xelatex as U+FFFF.
-        if kind in IMAGE_ROUTES and not has_image(path):
+        if kind in IMAGE_ROUTES and "mds-logo.png" in written and not has_image(path):
             problems.append("the embedded image is missing")
 
         if kind in (TYPST, FULL) and any(c in body for c in ("\ufffd", "\ufffe", "\uffff")):

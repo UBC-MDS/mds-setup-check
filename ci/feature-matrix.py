@@ -26,49 +26,30 @@ _ar = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_ar)
 KNOWN_TO_FAIL = _ar.KNOWN_TO_FAIL
 
-ROUTES = [
-    # (input, rendered by, output, produced file)
-    ("check-quarto-py.qmd",  "Quarto",    "LaTeX PDF", "check-quarto-py-latex.pdf"),
-    ("check-quarto-py.qmd",  "Quarto",    "Typst PDF", "check-quarto-py-typst.pdf"),
-    ("check-quarto-py.qmd",  "Quarto",    "HTML",      "check-quarto-py.html"),
-    ("check-quarto-r.qmd",   "Quarto",    "LaTeX PDF", "check-quarto-r-latex.pdf"),
-    ("check-quarto-r.qmd",   "Quarto",    "Typst PDF", "check-quarto-r-typst.pdf"),
-    ("check-quarto-r.qmd",   "Quarto",    "HTML",      "check-quarto-r.html"),
-    ("check-notebook.ipynb", "Quarto",    "LaTeX PDF", "check-notebook-quarto-latex.pdf"),
-    ("check-notebook.ipynb", "Quarto",    "Typst PDF", "check-notebook-quarto-typst.pdf"),
-    ("check-notebook.ipynb", "Quarto",    "HTML",      "check-notebook-quarto.html"),
-    ("check-notebook.ipynb", "nbconvert", "LaTeX PDF", "check-notebook-nbconvert-latex.pdf"),
-    ("check-notebook.ipynb", "nbconvert", "HTML",      "check-notebook-nbconvert.html"),
-    ("check-notebook.ipynb", "nbconvert", "WebPDF",    "check-notebook-nbconvert-web.pdf"),
-    ("check-rmarkdown.Rmd",  "Quarto",    "LaTeX PDF", "check-rmarkdown-quarto-latex.pdf"),
-    ("check-rmarkdown.Rmd",  "Quarto",    "Typst PDF", "check-rmarkdown-quarto-typst.pdf"),
-    ("check-rmarkdown.Rmd",  "Quarto",    "HTML",      "check-rmarkdown-quarto.html"),
-    ("check-rmarkdown.Rmd",  "rmarkdown", "LaTeX PDF", "check-rmarkdown-rmarkdown-latex.pdf"),
-    ("check-rmarkdown.Rmd",  "rmarkdown", "HTML",      "check-rmarkdown-rmarkdown.html"),
-]
+# Routes and features are both derived from the gate rather than restated here.
+# They used to be two hand-kept lists, and they drifted: the gate stopped accepting
+# "unbiased" as evidence of inline maths because it is the prose beside the equation,
+# and this table went on accepting it for months. A published table that is more
+# forgiving than the gate it illustrates is worse than no table.
+_PRETTY = {"LaTeX": "LaTeX PDF", "Typst": "Typst PDF"}
+
+ROUTES = []
+for _name, (_label, _kind, _src) in _ar.ROUTES.items():
+    _, _tool, _out = (part.strip() for part in _label.split("->"))
+    ROUTES.append((_src, _tool, _PRETTY.get(_out, _out), _name))
 
 # The full feature list, not grouped: a column that always agrees is still worth
 # showing, because the day it stops agreeing is the day this table earns its keep.
-FEATURES = [
-    ("accented latin",    (["Montréal", "naïve"],       "all")),
-    ("degree sign",       (["°"],                       "all")),
-    ("middot",            (["·"],                       "all")),
-    ("en dash",           (["–"],                       "all")),
-    ("curly quotes",      (["“", "”"],                  "any")),
-    ("literal Greek",     (["α"],                       "all")),
-    ("emoji",             (["✅", "📊"],                "any")),
-    ("inline maths",      (["𝛽", "β", "unbiased"],      "any")),
-    ("display equation",  (["RSS"],                     "any")),
-    ("numbered equation", (["𝜎", "σ"],                  "any")),
-    ("aligned equations", (["Var", "𝔼", "E["],          "any")),
-    ("markdown table",    (["you want", "write this"],  "any")),
-    ("image",             ([],                          "image")),
-]
+# (label, needles, source marker). The marker is what decides whether a fixture is
+# asked about a feature at all -- a document with no markdown table is not failing
+# to render one.
+FEATURES = [(desc, needles, marker) for desc, needles, _, marker in _ar.CHECKS]
+FEATURES.append(("image", [], "mds-logo.png"))
 
-
-# The image probe lives in assert-renders.py, so the gate and this table agree
-# on what "the image is there" means.
+# The image probe and the source reader both live in assert-renders.py, so the gate
+# and this table agree on what "the image is there" and "the fixture contains it" mean.
 has_image = _ar.has_image
+source_text = _ar.source_text
 
 
 def text_of(path: pathlib.Path) -> str:
@@ -93,7 +74,7 @@ def main() -> int:
         multi = len(sources) > 1
         print(f"\n**`{ext}`**" + ("" if multi else f" — `{sources[0]}`") + "\n")
         lead = (["input"] if multi else []) + ["rendered by", "output"]
-        heads = [f for f, _ in FEATURES]
+        heads = [f for f, _, _ in FEATURES]
         print("| " + " | ".join(lead + heads) + " |")
         print("|" + "---|" * (len(lead) + len(heads)))
 
@@ -101,20 +82,25 @@ def main() -> int:
         for src, tool, out, name in routes:
             path = pathlib.Path(name)
             row = ([f"`{src}`"] if multi else []) + [tool, out]
+            written = source_text(src)
+            # A dash means the fixture does not contain the construct, which is a
+            # different statement from a cross. Without the distinction the
+            # table-only fixture would read as a row of failures.
+            applies = [marker in written for _, _, marker in FEATURES]
             if not path.exists():
                 notes.append((name, tool, out))
                 row[-2] = f"{tool} {WARN}"
-                print("| " + " | ".join(row + [NO] * len(FEATURES)) + " |")
+                print("| " + " | ".join(
+                    row + [NO if a else NA for a in applies]) + " |")
                 continue
             body = text_of(path)
-            for feat, (needles, mode) in FEATURES:
-                if mode == "image":
-                    hit = has_image(path)
-                elif mode == "any":
-                    hit = any(n in body for n in needles)
+            for (feat, needles, _), applicable in zip(FEATURES, applies):
+                if not applicable:
+                    row.append(NA)
+                elif not needles:                       # the image
+                    row.append(YES if has_image(path) else NO)
                 else:
-                    hit = all(n in body for n in needles)
-                row.append(YES if hit else NO)
+                    row.append(YES if any(n in body for n in needles) else NO)
             print("| " + " | ".join(row) + " |")
 
         for name, tool, out in notes:
