@@ -220,6 +220,7 @@ does not look for it — it creates it — so the next run makes it again.
 | `ci/feature-matrix.py` | measures which features survive which route, and prints the tables above |
 | `ci/check-matrix-block.py` | fails if those tables have drifted from the rendered files |
 | `ci/run-setup-check.py` | attaches a terminal to `check-setup-mds.sh` so CI can answer its prompts |
+| `ci/webpdf.py` | exports a notebook through the browser without nbconvert's command line, which is what breaks that route on Windows |
 | `.github/workflows/assignment-workflow.yml` | the CI described under **For instructors** below |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
 | `mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
