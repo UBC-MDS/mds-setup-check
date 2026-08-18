@@ -8,15 +8,25 @@
 ORANGE='\033[0;33m'
 NC='\033[0m' # No Color
 
-# Windows is reachable through more than one POSIX layer, and they do not answer the
-# same way. Git Bash -- what the install guides tell students to use -- reports
-# OSTYPE=msys; Cygwin reports OSTYPE=cygwin and mounts the drives somewhere else
-# entirely. Testing only for msys sent a Cygwin shell down the Linux branch, where it
-# looked for `rstudio` and `tlmgr` on PATH and never scanned Program Files, and so
-# reported PostgreSQL, RStudio and tlmgr as MISSING on a machine that had all three.
+# Windows is reached through several POSIX layers and they do not identify themselves
+# the same way. Git Bash -- what the install guides tell students to use -- reported
+# OSTYPE=msys for years, and this script tested for exactly that. Git for Windows is a
+# Cygwin fork, and a recent one ships a bash built against newer Cygwin that reports
+# OSTYPE=cygwin instead. That single word silently took every Windows check down the
+# Linux branch, where it looked for `rstudio` and `tlmgr` on PATH rather than
+# `rstudio.exe` and `tlmgr.bat` and never scanned Program Files -- so a student with
+# all three installed was told all three were missing.
+#
+# `uname -s` is the durable signal, and the OS-version parse below already depends on
+# its shape: MINGW64_NT, MSYS_NT and CYGWIN_NT all mean Windows, whatever the bash
+# inside was built against. OSTYPE is kept as a second opinion rather than the only
+# one, so this does not break again the next time a triplet changes.
+is_windows=''
+case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*) is_windows='yes' ;;
+esac
 case "$OSTYPE" in
     msys | cygwin) is_windows='yes' ;;
-    *)             is_windows='' ;;
 esac
 
 # `/c/Program Files` under Git Bash, `/cygdrive/c/Program Files` under Cygwin, and
@@ -134,6 +144,12 @@ elif [ -n "$is_windows" ]; then
 else
     echo "Operating system verison could not be detected." >> check-setup-mds.log
 fi
+
+# Which shell this ran under, on every platform. A screenshot of the section below is
+# usually all an instructor gets, and this line is what turns "three things are missing"
+# into "your bash identifies as cygwin, so the Windows checks were skipped". It is the
+# fact that took the longest to establish the one time this went wrong.
+echo "Shell: $(uname -s) / $(bash --version 2> /dev/null | head -1)" >> check-setup-mds.log
 echo '' >> check-setup-mds.log
 
 # 1. System programs
