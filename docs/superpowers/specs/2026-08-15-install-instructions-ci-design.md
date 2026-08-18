@@ -1,123 +1,562 @@
-# Testing the MDS install instructions
+# Testing the MDS install instructions and the assignment workflow
 
-**Status:** revised after council round 6 · **Written:** 2026-08-15 · **Merge target:** 2026-08-27
-**Students install before:** ~2026-09-05
+**Status:** restructured 2026-08-17 · **Originally written:** 2026-08-15, from six council review rounds
 
-> **Why the review stopped at six rounds, and it wasn't because findings ran out.** Every
-> round produced material findings, and round 6 produced the most severe one in the whole
-> review (`curl` absent from Ubuntu Desktop). But the triage seat identified the top risk to
-> this effort as *"the branch does not merge in time, because the finding list keeps growing
-> against it"* — and at that point further review has **negative** expected value, because
-> every new finding is an edit to the branch that has to ship. The remaining unexplored
-> surface also needs hardware this review did not have: a Windows box, an Ubuntu desktop, and
-> a clean Mac. **Two colleagues doing a cold install from the merged docs is worth more than
-> a seventh round**, and it is the only thing that would exercise the Windows `msys` branch,
-> which still has zero execution coverage.
+Two things need protecting, and only one of them was in the original scope:
 
-## What was asked, and what we found
+| target | what it protects | how often a student meets it |
+|---|---|---|
+| **the machine** | the install guides still produce a working setup | once, in September |
+| **the weekly work** | clone → `uv sync` → edit → export a PDF still works | every assignment |
 
-The ask was GitHub Actions that script and test the UBC MDS install instructions. That
-design is in [The CI design](#the-ci-design) and it stands.
+The original request was CI for the install instructions. The review that followed found the
+instructions were *wrong now* in ways CI cannot fix, so the defect findings dominated the
+document. Most of those are fixed. What remains is below; the findings are kept in
+[Appendix A](#appendix-a--what-execution-found) as the record of how they were identified.
 
-But four rounds of review — the last two of which *ran* things rather than reading them —
-turned up defects in the live student-facing material that no CI would have fixed, and that
-outrank building the CI. Every one of them produces a **green result while being broken**,
-which is the same failure mode the CI exists to catch. That is the argument for building it,
-and a stronger argument that it must assert on **content**, not exit codes.
+## Status
 
-Terminology used throughout, because the subject is a checker's verdicts:
-**false OK** = wrongly accepts. **false MISSING** = wrongly alarms.
+**Done since this was written**
 
-## The governing constraint: the merge date
+| | |
+|---|---|
+| Install-guide branch merged | live site serves `v2026.08.17`; `check-python-installs.sh` returns 200, not 404 |
+| 19 mistagged code fences | fixed; three were rendering visibly wrong on the live site |
+| The `env` secret dump | fixed, and **better than this document proposed** — see the decision record below |
+| Script relocation | done — all three curled scripts now live here, which this document recommended **against** |
 
-**The single largest risk in this plan is that the branch does not merge in time, because
-the finding list keeps growing against it.** Every doc finding here is an edit to the one
-branch that has to merge; each "we should fix this first" pushes it later. If it merges
-Sept 3 instead of Aug 27 there is no slack to discover the merge itself broke something —
-and the fallback is 100 arriving students reading 2025 conda-era instructions. **That
-outcome is worse than every defect in this document combined**, and unrelated to any of them.
+**Still open**
 
-Cheapest mitigation, and it costs one sentence in the PR description:
+| item | where | blocked on |
+|---|---|---|
+| `${sys_progs[@]}` is unquoted | `check-setup-mds.sh`, the `sys_progs` loop | nothing — one character |
+| `apt install curl` missing | Ubuntu install guide | nothing — **highest-severity finding here** |
+| `--include-verbatim` | `link-check.yml` in the website repo | nothing — one flag |
+| `newcomputermodern` in the `tlmgr` list | all three install guides | the Greek-scope decision below |
+| Version-regex anchoring | `check-setup-mds.sh` | deliberately deferred to October |
 
-> After Aug 22, the only changes that go on this branch are ones that break a student's
-> install. Everything else lands on `main` after the merge.
+## Open work, in order
 
-**Pick Aug 27, merge on the 27th even if items are unfinished** — every item below except
-the two in this repo is a doc edit that can equally well be made on `main` afterwards.
+**1. `sudo apt install git curl` in the Ubuntu guide.** `curl` is absent from the Ubuntu
+Desktop manifest on both supported releases — verified against Canonical's ISO manifests,
+1,819 and 1,828 packages, `curl` in neither, `wget` in both. So the uv installer line silently
+does nothing (`curl … | sh` with no curl exits **0**), and the guide then blames the student's
+bash configuration. This is the single worst defect found in six rounds and the fix is one
+word. Add `libgit2-dev` and `libuv1-dev` to the system-dependency list in the same edit.
 
-## Do this today
+**2. Quote `"${sys_progs[@]}"`.** Unquoted, the version regexes glob-expand against the
+student's working directory: with `R=4.txt` and `latex=3.pdf` present, the checks silently
+*become those filenames*. One character.
 
-Ordered by dependency. Items 1-4 are edits to the website repo on `2026-27/install_update`;
-item 6 is in this repo.
+**3. `--include-verbatim` on `link-check.yml`.** lychee keeps only links from HTML attributes,
+so every URL inside a code fence is invisible to it today — including the three script URLs
+students actually run. One flag covers all 13 in-fence URLs.
 
-| # | Do | Why | Done when |
+**4. The fixture font fix**, once the Greek question is answered. Add `newcomputermodern` to
+the `tlmgr` list **first and separately**; change the fixtures later. Never the reverse — a
+fixture declaring a font whose package is not installed hard-fails `make` for the whole
+cohort, which is strictly worse than the silent corruption it replaces.
+
+## Decision record: the script relocation
+
+This document recommended **not** moving the scripts this cycle, on the grounds that three
+guides and a student-facing `curl` line depended on the old URL. The reasoning was sound and
+the conclusion was wrong.
+
+It was done in four PRs across two repos with no student impact. What made it safe was
+ordering, not caution: publish the new location first, confirm it serves, then repoint the
+guides. The failure that would have hit students — a guide pointing at a URL that 404s — was
+instead hit once, locally, by the author.
+
+The recommendation failed because it weighed **the risk of making the change** without
+weighing **the cost of the duplication persisting**. A file in two repositories with nothing
+checking that they match is a standing liability; a one-time ordered migration is a bounded
+one. When those are the alternatives, the bounded cost usually wins.
+
+Two consequences worth carrying forward:
+
+- **The old "governing constraint: the merge date" section is retired.** It was correct while
+  the branch was unmerged and is now history.
+- **The CI design got simpler** — see below. A large part of it existed only to bridge two
+  repositories.
+
+## The CI design
+
+### The assignment workflow — the second CI target
+
+Everything above protects a student's *machine*. Nothing protects the thing they then do
+every week: clone an assignment repo, `uv sync`, work in it, export a PDF.
+`assignment-workflow-uv.md` documents that workflow and has been handed to the teaching
+team; nothing verifies it.
+
+**The fixture already exists.** `assignment-workflow-uv.md` states that this repository *is*
+the reference implementation, and `pyproject.toml` matches its §3 template exactly, plus
+`playwright`. So exercising the workflow here exercises the template every assignment repo
+is copied from — no separate fixture repo, and §11's "turn the §3 pyproject into a template
+repo" open item is partly discharged by testing the original.
+
+Each assertion below defends a specific documented claim, so a reader can tell what breaks
+if it fails.
+
+| § | claim under test | assertion |
+|---|---|---|
+| 2 | the three commands work | `uv sync --locked` — `--locked` also catches `pyproject.toml` drifting from `uv.lock` |
+| 3 | `jupyterlab` is a real dependency, not a dev one | it resolves after `uv sync --no-dev` |
+| 3 | `ipykernel` is explicit | a Python kernel exists after `uv sync --no-dev` |
+| 3 | `otter-grader` is a real dependency | `uv run python -c "import otter"` |
+| 3 | `package = false`, `.venv` gitignored, `uv.lock` committed | static checks on the repo |
+| 4 | every Python command starts with `uv` | `uv run python -c "import otter, pandas"` succeeds |
+| 5 | Quarto route, **preferred** | `uv run quarto render <file> --to pdf` for `.qmd`, `.ipynb`, `.Rmd` |
+| 5 | nbconvert LaTeX route | `uv run jupyter nbconvert --to pdf` |
+| 5 | WebPDF route | `uv run playwright install chromium`, then `--to webpdf` |
+| 5 | **Quarto does not execute `.ipynb` by default** | render the notebook with and without `--execute`; assert the outputs differ |
+| 7 | the `--no-dev` grading-image trap | a kernel survives `uv sync --no-dev` |
+
+**JupyterLab is installed but never started.** Running a server in CI buys nothing. What is
+worth asserting is the claim that justifies making `jupyterlab` a real dependency in the
+first place — that server extensions only work in the same environment prefix as the kernel:
+
+```bash
+uv run jupyter lab --version
+uv run jupyter server extension list   # must list jupyterlab_git, jupytext, jupyterlab_spellchecker
+```
+
+That validates §3's reasoning without a server, and it is the check that would catch someone
+"tidying" `jupyterlab` into a dev dependency.
+
+**PDF assertions check content, not exit codes.** All three LaTeX routes currently exit 0
+while destroying `α β γ`, so an exit-code check passes on a broken render. Assert on
+extracted text, using `pypdf` rather than `pdftotext` — poppler is absent from the macOS and
+Windows runners. Assert against today's known-good characters (`Montréal`, `naïve`, `°C`, the
+en-dash, and the math-mode alpha, which works); add literal Greek to the assertion only once
+the font fix ships, or the job is red on day one and gets ignored within a week.
+
+**A gap worth recording rather than fixing here:** there is no dev-dependency group in this
+repo, so the `uv sync --no-dev` trap that §7 warns about cannot be *fully* demonstrated in
+the repository that documents it. The job can still assert a kernel survives `--no-dev`.
+
+### Hosting: one repo, and most of the bridge is gone
+
+An earlier draft split the workflows across two repositories, because the scripts lived in
+the website repo and the fixtures lived here. They are all here now, and that deleted real
+complexity rather than moving it:
+
+| no longer needed | why |
+|---|---|
+| cross-repo `workflow_call` | the workflows and what they test are in one repo |
+| `job_workflow_sha` pinning | there is no second repo to drift from |
+| `secrets: inherit`, permission-ceiling reasoning | no cross-repo token flow |
+| "which repo hosts the workflows" | answered by construction |
+| `MDS_BASE_URL` preview-deploy plumbing | the check script sits next to the workflow that runs it |
+
+The audit likewise reads the version regexes from a local file rather than parsing another
+repository. What remains from that design and still matters: the **negative controls**
+(`must_reject`), which stop a tautological regex validating itself forever, and `pin_policy`,
+which stops PostgreSQL and Quarto crying wolf every September.
+
+One consequence of the move to note so it is not rediscovered: `check-setup-mds.sh` and
+`check-python-installs.sh` now both emit a `## Environment`-shaped heading into the same log.
+Cosmetic, but confusing to read.
+
+### Runner fidelity — negative controls are mandatory
+
+*(Runner-image contents below are read from image manifests, not executed — no Windows or
+macOS runner has been run in this review.)*
+
+`windows-2025` preinstalls **R 4.6.1**, **PostgreSQL 17 at exactly the path
+the Windows `psql` probe loop in `check-setup-mds.sh` probes**, **Docker**, and **git**. So CI would report `OK` on
+the `.libPaths()` parity gate and the whole PostgreSQL section without executing a line of
+either. Docker is preinstalled on every runner.
+
+macOS 15 ships gfortran, which a student Mac does not — so `pak` source builds succeed in CI
+and fail for students. *(Hypothesis, not established: that this is the mechanism behind the
+macOS "R package won't install" tickets.)*
+
+**Every non-container job therefore runs a baseline preflight**: run the check script before
+installing anything, record the pre-satisfied set, exclude those from counting as a pass,
+and print them in the job summary.
+
+### Container job
+
+Run as root; `apt-get install -y git ca-certificates curl wget sudo gnupg lsb-release
+software-properties-common locales tzdata` **before** the first `uses:` step, or
+`actions/checkout@v6` falls back to the tarball path and leaves no `.git`. Actions cannot run
+per-step as a non-root user, so create `student` (uid ≠ 1000 — the image already has a
+`ubuntu` user there), `chown` a real `/home/student`, and run every doc-derived command *and*
+the final check through one `su - student -c` wrapper with `HOME` fixed.
+`check-setup-mds.sh`'s `mds_project=` definition hardcodes `$HOME/mds-setup-check` **with no env override** — only
+`MDS_BASE_URL` is overridable — and a fake `HOME` also breaks the playwright cache probe,
+the shell-config capture, and R's user library.
+
+**PATH persistence: the mechanism is `~/.profile`, not `~/.bashrc`, and not `$GITHUB_PATH`.**
+`su - student -c` starts a *login* shell, so `~/.profile` is read even though it is
+non-interactive — and Ubuntu's stock `~/.profile` already prepends `$HOME/.local/bin` and
+`$HOME/bin`. `$GITHUB_PATH` is **inert**: `su -` resets `PATH` and re-runs
+`/etc/profile` + `~/.profile`, discarding it. Write `/etc/profile.d/mds-ci.sh` instead.
+
+*Not yet executed:* the claim that **only** the Quarto tools dir lacks a `~/.profile`
+counterpart. Have the job assert this at runtime rather than trusting it.
+
+**Locale.** The fixtures contain `Montréal · naïve · Öl · α β γ` and the container's `LANG`
+is `C`. `locales` + `locale-gen en_US.UTF-8` + exporting `LANG` are required and appear
+nowhere in the docs.
+
+### A second job in `install-check.yml` — assertions, not disclaimers
+
+A 5-minute `runs-on: ubuntu-24.04` job (no container) doing *only* the three
+systemd-dependent checks the container structurally cannot make: `hostnamectl` succeeds,
+`apt install postgresql` yields a running cluster reachable by `sudo su -c psql postgres`,
+and `docker run hello-world` works. Do **not** fake these inside the container by shimming
+`hostnamectl` — that makes the log lie about what was verified.
+
+### Two places CI goes green while lying
+
+Both found by drafting the installer. Both need a marker in the script *and* a line in the
+job summary.
+
+1. **Headless-Chromium dependencies.** `ubuntu:971-974` documents only `playwright install
+   chromium`; the WebPDF check in `check-setup-mds.sh` then tests WebPDF. On a desktop the ~15 GTK/NSS
+   libraries arrive with GNOME; in `ubuntu:24.04` they arrive only via the Positron/RStudio
+   `.deb` closures — so skipping the GUI apps breaks WebPDF for reasons unrelated to the
+   docs. Do not let this get fixed by accident.
+2. **`pak`'s system-requirements auto-install.** With passwordless sudo, `pak` silently
+   installs whatever `ubuntu:758`'s seven-package list forgot — and that list *is* incomplete
+   (no `libgit2-dev`, needed by `gert` → `usethis`/`devtools`). Set
+   `options(pkg.sysreqs = FALSE)` so the documented list is what is under test.
+
+### Installer conventions
+
+`ci/install-ubuntu.sh` **does not exist yet.** A ~330-line draft was produced during review
+and its census is the useful part: **101 lines carry a `[ubuntu:NNN]` citation, but 43 lines
+have no counterpart anywhere in the doc.** For every line lifted from the doc there is more
+than one that is not in it — "hand-transcribed" undersells it ~2×. Week 2 writes the real
+thing; the draft's marker census is the estimate to plan against, not committed code.
+
+| Marker | Meaning | Draft count |
+|---|---|---|
+| `# CI-SKIP:` | documented step deliberately not run | 14 |
+| `# CI-EXTRA:` | no counterpart in the doc — **each is an untested doc gap** | 43 |
+| `# CI-TRANSLATED:` | documented step, meaning kept, form changed | 11 |
+| `# CI-BOUNDARY:` | stands in for an "open a new terminal" step | 6 |
+
+Two details easy to get wrong first try:
+
+- **`R_LIBS_USER` must be created, and `path.expand()` is load-bearing.** R silently drops
+  `R_LIBS_USER` from `.libPaths()` when the directory does not exist — *that*, not a flag, is
+  what answers `ubuntu:767`'s "if asked about a personal library, select Yes". Without
+  `path.expand()` you create a directory literally named `~`.
+- **`ubuntu:446` clones upstream `main`.** Transcribed literally, the job tests nothing about
+  the PR. `MDS_REPO`/`MDS_REF` overrides are load-bearing.
+
+Skip the **whole** Stan section (`ubuntu:778-794`): the `r_pkgs` list in `check-setup-mds.sh` checks neither
+`rstan` nor `StanHeaders`, and building them from source dominates wall-clock. `r-stack.yml`
+covers them.
+
+Also: `ubuntu:776` documents a prompt `pak` does not emit (a `remotes`/`devtools` leftover),
+and `ubuntu:905-907` is a prose-only conditional a script must resolve one way or the other.
+
+### The audit
+
+Comparing **prose samples** to upstream produces five findings today — uv 0.12.3→0.12.5,
+Positron 2026.08.0→2026.08.1-2, Quarto 1.10.3→1.10.18, renv 1.2.3→1.2.4, ottr 1.5.2→1.6.0 —
+all of which still pass their regex, i.e. all no-ops. A weekly issue opening with five
+non-actionable items gets muted by week two. So the primary assertion is
+**`check_regex` vs current upstream release**, not prose samples.
+
+**But that assertion is positive-only, and a tautology satisfies it forever.** Two manifest
+fields are mandatory, not niceties:
+
+- **`must_reject`** — negative controls per component (`one major below`, `one major above`).
+  Without them the audit would have validated all ten broken regexes weekly, indefinitely.
+- **`pin_policy`** — PostgreSQL (docs pin 17; upstream 18.6) and Quarto (stable 1.10.18 vs
+  prerelease 1.11.1) are deliberately below latest and would otherwise cry wolf every
+  September, muting the channel for the exact reason we killed the prose-sample audit.
+
+Comparison is three-way: doc prose ↔ `check_regex` ↔ upstream, filtered by `pin_policy`.
+
+**Scope.** `link-check.yml` passes no `--include-verbatim`, so lychee keeps only links from
+HTML attributes and drops every plaintext URL (confirmed in `html5gum.rs:371` and in this
+site's build output). But the fix is today's item 5 — one flag covers all 13 in-fence URLs —
+so the audit is scoped to two things only:
+
+1. `check_regex` vs upstream, with negative controls and `pin_policy`.
+2. Download-asset liveness for what CI never installs: **Positron, Quarto, RStudio, Docker
+   Desktop, the EnterpriseDB PostgreSQL 17 installer, and the ezwinports `make` zip**
+   (`windows:990`) — the last is non-GUI but every `make` instruction depends on it for a
+   third of the cohort.
+
+**Python packages audit against `uv.lock`, not PyPI.** All nine are lock-satisfied; the real
+exposure is internal — `pyproject.toml` carries lower bounds only (`pandas>=3`,
+`requires-python=">=3.14"`) while the checker demands exact majors, so one `uv lock --upgrade`
+breaks it with no upstream event. R packages *are* upstream-driven: `renv.lock` carries only
+rmarkdown/renv/tinytex; the other seven come from unpinned `pak::pkg_install`. `ottr` and
+`canlang` install from **git HEAD**, so a "latest *release*" question is structurally blind to
+them — `r-stack.yml` is their only guard.
+
+**Size:** four adapters (GitHub with three sub-modes, CRAN/r-universe, PyPI,
+postgresql.org) cover most gated components — **~300 lines plus a ~120-line manifest.**
+
+### What this CI does not tell you
+
+Printed in every job summary, because a green badge read as "the docs work" is worse than no
+badge:
+
+- Windows/macOS runners pre-satisfy R, PostgreSQL, Docker and git (mitigated by the
+  preflight, not eliminated).
+- macOS runners have gfortran; student Macs do not.
+- Intel macOS is never exercised — free public-repo macOS runners are arm64.
+- Every R command is documented as "type this into the RStudio console"; CI runs `Rscript`,
+  with different `.libPaths()` and no equivalent of "if asked about a personal library,
+  select Yes".
+- Miniconda is preinstalled on the Ubuntu and Windows runners, so `check-python-installs.sh`
+  always emits "Recommended to remove"; the clean run the docs promise is unreproducible.
+- **`docker --version` and `psql --version` have never verified a daemon or a cluster on any
+  platform** — that is not a container limitation but a permanent blind spot for the November
+  SQL and Docker courses.
+- `options(pkg.sysreqs = FALSE)` means CI tests the documented dependency list, not what a
+  student's `pak` would silently repair.
+- Network conditions differ from a student installing from outside Canada or on UBC wifi.
+
+## Triage and phasing
+
+*Written on 2026-08-15 against a three-week window. Week 1 has partly elapsed and
+the merge it was sequenced around has happened; the ordering logic still holds.*
+
+### The runners are also the test hardware
+
+Worth stating plainly, because it changes the CI's value proposition and this review
+under-weighted it: **GitHub Actions provides Linux, macOS and Windows runners, so the CI is
+the only accessible way to execute the paths this review could only read.** The Windows
+`msys` branch of `check-setup-mds.sh` has zero execution coverage anywhere, and it decides
+what a third of the cohort is told about their machine; the Ubuntu desktop paths were
+verified only against package manifests. Every finding that came from *running* something
+was worth more than the ones that came from reading, and the runners are how the remaining
+two platforms get run at all.
+
+That is an argument for pulling the Windows verification job earlier than pure
+regression-protection logic would suggest — not to certify `C:\Users\runneradmin`, but to
+execute 60 lines of Windows-only shell that nothing has ever executed. It does not change
+the September ordering below (the doc defects still outrank it), but it does mean the
+Windows job earns its place on discovery value, not just regression value.
+
+**And the mechanism is already there.** On GitHub-hosted Windows runners, `shell: bash`
+resolves to **Git for Windows bash** (`C:\Program Files\Git\bin\bash.EXE`), pre-installed on
+every Windows image. So the `msys` branch of `check-setup-mds.sh` runs on a hosted runner
+with no setup at all:
+
+```yaml
+jobs:
+  windows-job:
+    runs-on: windows-latest
+    steps:
+      - run: bash <(curl -Ssf "$MDS_BASE_URL/check-setup-mds.sh")
+        shell: bash
+```
+
+Two caveats to record. On **self-hosted** runners Git Bash is not guaranteed to be present or
+on `PATH` — it must be installed and its `bin` directory added to the PATH of the account
+running the runner service. And `shell:` does not accept a custom bash path, so a different
+environment (MSYS2, Cygwin) needs a `PATH` adjustment or a wrapper script, because the runner
+invokes whichever `bash` it finds. Neither affects the hosted-runner plan here.
+
+### Build exactly one workflow before September: `r-stack.yml`
+
+The review changed what the CI is *for*. The original premise was that the instructions
+might drift out of true. They aren't drifting — the shared blocks are byte-identical and
+someone has been propagating edits deliberately. What the review found instead is that the
+instructions are **wrong now**, in ways CI cannot fix, on a branch that hasn't merged.
+**CI protects against a future regression; it does nothing about a present defect.** Spending
+August on CI spends the scarce resource (three weeks) on the abundant one (nine months
+afterwards). The CI's real customer is the 2027-28 install update.
+
+The strongest argument against rushing it comes from this review: the originally-specced
+acceptance criterion — "three PDFs as artifacts" — **was green while the fixtures silently
+corrupted Greek characters.** A workflow that checks exit codes and artifact existence is
+worse than nothing, because it converts "we don't know" into "we checked."
+
+**`r-stack.yml` first, not `fixtures.yml`.** `fixtures.yml` guards files you control, in one
+repo, that this review just executed and found working, and that won't change unless you
+change them. `r-stack.yml` guards `ucbds-infra/ottr` and `ttimbers/canlang` installed **from
+git HEAD**, plus a 12-package `pak` resolution against live CRAN — things that can break
+between now and Sept 5 without anyone touching anything, and that break identically for all
+100 students on the same morning. It's also the cheapest item: ~60 lines, no LaTeX, no
+container, no matrix, no `su -` archaeology.
+
+### Six editing sessions — do not interleave them
+
+| Session | File | Contents |
+|---|---|---|
+| **A** | `check-setup-mds.sh` only | delete the `env` dump; macOS `command -v psql` fallback; preserve render logs on success; rmarkdown dump section; strip ANSI; fix the 404 message; quote `"${sys_progs[@]}"`; widen `positron`/`rstudio` to `20(26\|27)\.` and `docker` to `[23][0-9]\.` **Hard rule: do not touch the ten regexes here** — the moment you do, this session acquires three sample-output blocks and two machines you don't have |
+| **B** | `install_ds_stack_mac.md` | `chsh` verification + password warning + Homebrew caveat; `xcode-select -p`; `xattr` replacement; restore the sensitive-info line; add `newcomputermodern`; iCloud sync warning; `curl -f` at `:1061`; absolute path at `:769` |
+| **C** | `install_ds_stack_windows.md` | the `R_DIR` block and the "replace the section that reads" step (one contiguous edit closes three findings); the `.libPaths()` one-sentence fix; restore the sensitive-info line; add `newcomputermodern` |
+| **D** | `install_ds_stack_ubuntu.md` | add `newcomputermodern` only — it's the doc in the best shape |
+| **E** | this repo | renv `snapshot.type: implicit` + regenerate; delete the false README/qmd claims |
+| **F** | CI | `r-stack.yml` |
+
+**Ordering dependencies, worst first:**
+
+1. **B, C, D must land before the merge.** The merge date owns them.
+2. **`--include-verbatim` must come *after* the merge, not before.** I had this backwards:
+   `git grep check-python-installs main -- content` returns nothing, so no live page links
+   that URL and lychee cannot find it regardless of flags. Running it early proves nothing.
+3. **The 22nd `tlmgr` package must merge before any fixture asserts on the font — never the
+   reverse.** A fixture declaring `mainfont: NewCM10-Regular.otf` **hard-fails** under
+   fontspec on any machine whose TinyTeX lacks it. Ship the fixture change first and you
+   convert a silent Greek corruption that harms nobody in install week into a hard `make`
+   failure for 100 students in install week. **This is the most dangerous ordering
+   dependency in the plan.** Adding the package is safe and unilateral; do it now, change
+   the fixtures in October.
+4. **`fixtures.yml`, whenever built, must assert against *today's* behaviour** — `Montréal`,
+   `naïve`, `°C`, the en-dash, and the math-mode alpha — and **not** literal Greek, which is
+   still broken. Otherwise CI is red on day one and you'll train yourself to ignore it.
+
+### Realistic allocation
+
+- **Week 1 (Aug 17-21):** rotate tokens (0.5h) · Session E (2.5h) · Session A (1h) ·
+  Sessions B/C/D (5h) · buffer + read the branch's 34 commits (3h)
+- **Week 2 (Aug 24-28) — merge week, protect it:** merge and deploy (4h) · post-merge smoke
+  test from a clean `~` (1h) · `--include-verbatim` + reassign the link-rot issue off
+  `ZacWarham`/`zmx721` (0.5h) · `r-stack.yml` (4h) · buffer (2.5h)
+- **Week 3 (Aug 31-Sep 4):** **two colleagues do a cold install from the merged docs, one
+  Windows one Mac (2h)** — worth more than any workflow you can build this month, and the
+  only thing that exercises the Windows `msys` branch, which has zero execution coverage ·
+  fix what they find (2h) · `fixtures.yml` ubuntu-only with content assertions (4h) · file
+  the October list in YouTrack `UBC` (2h)
+
+### Drop entirely — real findings not worth fixing
+
+`rm -vi` vs `rm -vI` (the macOS variant is the *more* protective one; "fixing" it makes
+students' `rm` less safe) · the `PS1` colour divergence · `ubu:1168`'s psql sample
+parenthetical · `windows:910`'s wrong Rtools rationale (wrong prose, no failure mode) ·
+"how to exit psql" being Ubuntu-only (that's a Slack answer) · removing the five cargo-cult
+"open a new terminal" steps (saves 30 seconds, risks breaking a prose-carried session
+assumption — negative expected value) · the prose-sample version audit · `audit.py`'s
+download-liveness scope item (subsumed by `--include-verbatim` on a workflow that already
+exists) · **the "settle the TinyTeX-1 bundle contents" investigation** — adding the package
+unilaterally makes the answer irrelevant · triaging the 43 `# CI-EXTRA` lines, which don't
+exist yet.
+
+Also drop from active attention: `mds-help.sh` staleness (the branch copy is already
+updated — conda survives only as a documented one-year transition alias) and the IRkernel
+recipe (hand it to the teaching team, don't fix it here).
+
+### Corrections to earlier rounds, verified
+
+- **The renv finding is real but not a hard failure.** All 15 recommended packages ship with
+  R and are present in the system library, so `renv::restore()` finds them satisfied and
+  skips them — no source builds, no gfortran problem. What's real is the scary
+  `The project is out-of-sync` warning on every student machine, and `README.md:114-116`
+  being false. Fix it, but it isn't top-three.
+- **`README.md:121-122` is CORRECT, not "disproven".** `renv::status()` prints *"The lockfile
+  was generated with R 4.6.1, but you're using R 4.5.3."* An earlier round recorded the
+  opposite and this document repeated it.
+
+### Week 1 (Aug 17-21) — protect what students actually run
+
+| Deliverable | Done when |
+|---|---|
+| **Settle the TinyTeX-1 font question** — install the default bundle in a clean container, render one fixture | Either the Greek renders (font fix unnecessary for students; CI assertion still ships) or it does not (22nd `tlmgr` package confirmed necessary) |
+| **`fixtures.yml`** — `setup-r` pinned 4.6.x, Quarto at the documented version, **LaTeX the doc's way** (`tinytex::install_tinytex()` + the `tlmgr` list lifted to `ci/tlmgr-packages.txt`), then `uv sync --locked` → `make r-packages` → `make` → `playwright install chromium` → `make webpdf`. Matrix ubuntu/macos/windows, **plus baseline preflight** on all three. `on: [push, pull_request, schedule]`; `concurrency` with `cancel-in-progress: true` | Green on all three OSes, where green means **`ci/assert-pdf-text.py` passes**, not that PDFs exist. Two negative controls: break a `tlmgr` package name → red; revert the font fix → red. `check-notebook-web.pdf` is a free positive control and must stay green throughout |
+| **`r-stack.yml`** — nightly, ubuntu + macos; runs the documented R blocks verbatim: `install.packages('pak')`, the 12-entry `pak::pkg_install(...)` incl. `ucbds-infra/ottr` and `ttimbers/canlang`, then `StanHeaders`/`rstan` from r-universe. **Skip `example(stan_model)`** (20-40 min, checked by nothing). `${{ github.token }}` for GitHub rate limits | All 12 install without error; `installed.packages()` contains all ten of the `r_pkgs` list in `check-setup-mds.sh`'s `r_pkgs`. Negative control: add a nonexistent package → red |
+
+The `ci/tlmgr-packages.txt` count is **21 today, 22 if the font fix proves necessary** — do
+not hard-code 21 before the first row of this table is answered.
+
+Note the push trigger is kept because this repo *will* change through August (fixtures,
+`ci/`), not because it won't — an earlier draft had that backwards.
+
+### Week 2 (Aug 24-28) — Ubuntu, by hand
+
+| Deliverable | Done when |
+|---|---|
+| **`ci/install-ubuntu.sh`** written fresh (draft census above as the estimate), with a header naming the doc sections it mirrors and the four markers | Reads top-to-bottom as something you would hand a student; every `# CI-EXTRA` line has a one-line justification |
+| **`install-check.yml`** — container job + the 5-minute non-container job; `timeout-minutes: 300` on the container job only; `concurrency` with **`cancel-in-progress: false`** (Aug 17-28 is when pushes are most frequent, and a 2.5-4h run must be allowed to finish); `if: always()` on uploads; every emitted command wrapped in `timeout 900`; **log stripped of the `## Environmental variables` section before upload** | `check-setup-mds.sh` produces an accepted-exception list short enough to read in full, starting with the `hostnamectl` case. Negative control: break a documented command → red |
+| **Settle: does `rstudio --version` work headless?** | Answered. If no, RStudio is a permanent accepted exception and `rstudio="2026\..*"` is exercised by nothing on Linux |
+
+### Week 3 (Aug 31-Sep 4) — breadth and the audit
+
+| Deliverable | Done when |
+|---|---|
+| **macOS verification-only job** — install via setup-actions (low fidelity, acknowledged), **baseline preflight first**, then run every `--version` and diff | Preflight output appears in the job summary and pre-satisfied components are excluded from passes |
+| **Windows job (~15 min) — only worth building WITH manufactured negative controls.** A stock runner is `C:\Users\runneradmin`: ASCII, no spaces, admin, local account, one R version — i.e. none of the conditions that actually break Windows students. Without the controls it is a badge certifying the easiest configuration in existence | (1) **No `\r` anywhere in `check-setup-mds.log`** — the regression guard for item 4. (2) The four hardcoded probe paths still exist. (3) `cygpath -w "$(mktemp -d)"` recorded, and one fixture rendered from a directory containing a space. (4) `.libPaths()` diffed between `pwsh` and Git Bash, with `R_USER` unset as the negative control. (5) **`R_DIR` control: create an empty `C:\Program Files\R\R-4.5.3\bin\x64\`, source the doc's two lines, assert `R --version` still reports 4.6.1 — this fails today.** (6) Hostile-path control: run once with `HOME` under a non-ASCII directory; expect failure, that failure is the finding |
+| **`ci/audit.py`** (~300 lines + ~120-line manifest) | Point a `check_regex` past upstream → issue opens; revert → closes. **Plus:** a `must_reject` entry fires; and PostgreSQL 17-vs-18.6 raises **nothing** (the `pin_policy` test — the audit's highest-risk component) |
+| **Job-summary disclaimer block** wired into all workflows | "What this CI does not tell you" appears in every run summary |
+| **Ownership shape applied to all four workflows** (`fixtures.yml`, `r-stack.yml`, `install-check.yml`, `version-audit.yml`) | Each has a label, an in-place issue, named assignees, and a final `exit 1` |
+
+### Post-September
+
+The content-based linter and the third fence-category convention. Promoting
+`ci/install-ubuntu.sh` toward a student installer — **"seed for", not "promote to"**: 14
+`# CI-SKIP` items are *mandatory* student steps, and four requirements point opposite ways
+(pinned vs current URLs; fail-fast vs resumable; NOPASSWD vs a 15-minute sudo timestamp
+across a 2-4h run; and idempotency, which matters only for students and on which CI exerts
+zero pressure). The realistic end state is one shared `ci/lib-mds-install.sh` with two thin
+drivers.
+
+Known idempotency hazards for that work, in severity order: bare `git clone` (`:446`, hard
+failure on re-run), three `~/.bashrc` appends totalling ~62 duplicated lines (`:238`, `:303`,
+`:1056`), and `tinytex::install_tinytex()` without an `is_tinytex()` guard (`:834`). The
+`tee -a` CRAN key (`:700`) is real but the least of these.
+
+## Open decisions and owners
+
+| Decision | Owner | Needed by | Notes |
 |---|---|---|---|
-| 1 | **Rotate `GITHUB_PAT`, `GITHUB_TOKEN`, `YOUTRACK_TOKEN`** | They are in plaintext in `~/mds-setup-check/check-setup-mds.log` | New tokens issued; old ones revoked |
-| 2 | **Commit the 19 fence retags** (already applied, uncommitted) + add `# CI-SKIP:` for `ubuntu:1000` | Uncommitted work does not merge in item 5 | `git status` clean on those two files |
-| 3 | **Drop or allowlist the `env` dump** (`check-setup-mds.sh:467`); read `~/.zshrc`/`~/.zprofile`/`~/.zshenv` too. **Keep an explicit `$SHELL` line** — see below | Students are told to *send* this log; the bash pair is dead on macOS | A fresh log contains no `ghp_`/`perm-`; contains zsh config **and `$SHELL`** |
-| 4 | **Quote `"${sys_progs[@]}"`** (`:197`) — the glob bug only. **Do NOT anchor the regexes yet** — see below | One character; removes the pathname-expansion defect | `R=4.txt` in cwd no longer rewrites the check |
-| 4a | **`sudo apt install git curl`** at `ubu:198`, and add `libgit2-dev libuv1-dev` to `ubu:758` | **`curl` is absent from Ubuntu Desktop** (verified: 1,819/1,828 packages, curl in neither), so uv never installs and the doc misdiagnoses it; `fs`'s configure hard-fails without libuv | A stock-desktop Ubuntu install reaches `uv --version` successfully |
-| 5 | **Add `--include-verbatim` to `link-check.yml`** | Covers all 13 in-fence URLs | Next run reports the `check-python-installs.sh` 404 |
-| 6 | **Merge `2026-27/install_update`** | Nothing else is testable until the live scripts stop being the 2025 conda-era ones | `check-python-installs.sh` returns 200 |
+| **Is literal (non-math) Greek in scope for MDS assignments?** | Dan | before Week 1 fixture work | Justifies 22 MB + a 22nd `tlmgr` package. Math mode already works; a column named `α` is silently corrupted today |
+| Does `rstudio --version` work headless? | — | Week 2 | Changes the shape of the container job |
+| Schedule location: cross-repo cron vs keepalive | — | Week 1 | **Recommend keepalive in this repo.** Driving the cron from the website repo dodges the 60-day auto-disable but puts failures for Dan's repo onto a file others maintain |
+| Third fence-category convention | — | post-Sept | Blocks a fence-aware linter; the content-based linter does not need it |
+| Docker 30: accept the clean break, or pre-empt it? | — | Week 1 | Anchoring `^Docker version (28\|29)\.` converts today's silent false-OK into a guaranteed mass false-MISSING the day 30 ships. Deliberate, but say so |
+| **`positron`/`rstudio` `2026\..*` expire January 2027** — mid-program, mass false-MISSING | — | before January | Diagnosed twice, assigned to nothing. Not among the ten fixed today (they are correctly anchored — they just expire) |
 
-Item 5 goes **before** item 6 deliberately: run against the live 404 and it proves the
-mechanism; run after the merge and it proves nothing until the next regression.
+**Named humans:** none of the four proposed workflows has an assignee. `link-check.yml:81`
+assigns to `ZacWarham` and `zmx721` — that is the *precedent's* assignees, not this project's.
+On `schedule` events GitHub emails **only the user who last committed the cron file**, so
+today the answer to "CI fails at 3am in November" is one email to Dan. The risk is not alert
+fatigue, it is an **unread channel** — which is worse, because a green dashboard nobody owns
+is exactly what the fixture bug demonstrates.
 
-> **The regex anchoring is deferred to October. It is not a 30-minute job.**
->
-> The script uses **one regex for both the match and the display**. Verified:
->
-> ```
-> "R version 4.6.1 (2026-06-24) …"   grep -Eio '4.*'          → OK  R 4.6.1 (2026-06-24) …
-> "R version 4.6.1 (2026-06-24) …"   grep -Eio '^R version 4\.' → OK  R R version 4.
-> "GNU Make 4.4.1"                   grep -Eio '^GNU Make 4\.'  → OK  make GNU Make 4.
-> ```
->
-> **Anchoring deletes the version number from the log instructors read to diagnose
-> students.** So the real change set is: ten regexes, *plus* decoupling match-regex from
-> display-regex, *plus* `tr -d '\r'`, *plus* a no-`$`-anchor rule, *plus* replacing the macOS
-> `bash` entry with a login-shell check, *plus* the R architecture check — *plus* ~13 lines
-> regenerated in **each of three sample-output blocks** (`mac:1192`, `ubu:1167`, `win:1376`),
-> which are transcripts of a program's output on three operating systems. Hand-writing those
-> is the exact defect class this project exists to remove. **Correctly sized only after a
-> Windows CI job can generate the transcript.** 6-10 hours, not 30 minutes.
->
-> Every false OK in that table is also caught louder and sooner by a behavioural check in the
-> same log: R 3.4.4 passes `R=4.*` and then fails renv and pak visibly; pandoc 2.3 passes and
-> then fails all four PDF checks; quarto 2.0.1 does not exist. The two that aren't —
-> docker and psql — gate courses starting in November.
->
-> **When you do it, these two traps apply:**
->
-> **Windows.** Every native Windows program emits CRLF and nothing strips it:
-> `"GNU Make 4.4.1\r"` matches `^GNU Make 4\.` but **not** `^GNU Make [0-9.]+$`.
-> Start-anchored patterns survive; **any `$` anchor becomes a Windows-only false MISSING the
-> day the fix ships.** Add `tr -d '\r'` inside `:213`/`:219`, and adopt the rule that no
-> `sys_progs` regex may anchor at `$`. The same stray CR currently lands in ~13 `OK` lines
-> of the log students submit.
->
-> **macOS.** Anchoring `bash=3.*` to `^GNU bash, version 3\.` **rejects a Homebrew bash 5** —
-> a student with a *better* bash than macOS ships would be told they are misconfigured. The
-> entry is measuring the wrong thing anyway: it runs `bash --version` through `PATH`, not the
-> login shell. **Replace the `bash` entry with a login-shell check** (`$SHELL` / `ps -p $$`)
-> rather than anchoring it. That also gives item 3 the `$SHELL` line it needs.
->
-> **Also add an architecture check while you are in here** (see the macOS section): `:213`
-> reads only `head -1` of `R --version`, and `Platform: aarch64-apple-darwin20` is line 3.
+## Defects found in passing — need tickets, not spec paragraphs
 
-Cheap wins in the same editing pass as items 3-4, all in `check-setup-mds.sh`:
-**preserve the render error logs on success** (see [the diagnostics defect](#the-diagnostics-point-the-wrong-way)),
-give the rmarkdown branches a dump section instead of `/dev/null`, strip ANSI escapes from
-the log, and stop blaming the student's network for a server-side 404.
+None of these are CI work and none currently has an owner. Recommend filing in YouTrack
+(`UBC` project) rather than leaving here.
 
-**Blocked on a decision from Dan** (see [Open decisions](#open-decisions-and-owners)): the
-fixture font fix. It is not in the list above because it needs an answer first.
+| Defect | Evidence | Impact |
+|---|---|---|
+| **`windows:830` `R_DIR` selects the oldest R** | array subscript; verified locally with 4.5.3 + 4.6.1 present | Silent, affects a third of the cohort, more likely as the year progresses. **Fix before September** |
+| **`windows:830` glob has no failure path** | non-admin installs → `%LOCALAPPDATA%\Programs` (CRAN, R ≥ 4.2.0) | `R: command not found` with no diagnostic in the doc |
+| **`windows:1004-1018` make edit can delete `R_DIR`** | produces an empty PATH element = current directory | R breaks; symptom surfaces in the LaTeX section |
+| **`windows:882-896` `.libPaths()` gate is vacuous where placed** | personal library doesn't exist until `:922`; sample output at `:889-890` impossible at that point | The doc's most emphatic instruction currently protects nobody |
+| **`windows:93` sends ARM64 students to the x64 build** | an ARM64 User install exists; CRAN ships a different R installer for WoA, whose library is `aarch64-library` | Growing share of 2026 laptops |
+| **`windows:910` attributes Rtools PATH handling to RStudio** | it is R itself; CRAN says install order doesn't matter | Wrong reason implies terminal R can't compile |
+| **`windows:1189` mandates PostgreSQL 17; checker probes 18 first** | accepts 16\|17\|18 | Silently blesses a version the doc didn't ask for |
+| **No guidance on spaces or non-ASCII in the Windows profile path** | ezwinports `make` is a **32-bit ANSI** build (PE32/i386, verified); TeX Live is fragile there | International cohort; very hard to diagnose |
+| **`check-setup-mds_kcds-toolbox.sh` executes a 404 body** | fetches from a `master` branch **that does not exist** — 200s only via GitHub's rename redirect — with `curl -Ss`, no `-f`, piped to `bash <(…)` | Arbitrary-content execution for a *different UBC program*. No owner |
+| **`mds-help.sh` is stale and self-installing** | curled from `ubuntu:1118` into every student's shell; live copy is still the conda version | Student-facing |
+| **`mds-help.sh` documents 7 of 12 aliases** | omits `rm`, `mv`, `cp`, `mkdir`, and **`alias grep='grep -i'`** | `grep -i` silently changes DSCI 511 exercise answers, in the card students consult |
+| **IRkernel recipe cannot work** | `assignment-workflow-uv.md:320-324` runs `IRkernel::installspec()`; IRkernel is installed nowhere, and the `r_pkgs` list in `check-setup-mds.sh` says its absence is *deliberate* | Already handed to the teaching team |
+| **`renv/settings.json` is `snapshot.type: "all"`** | 41 packages incl. 15 base/recommended; `make` prints `The project is out-of-sync` on every student machine | Install-week scare in a step that already scares people. Fix: `implicit` + regenerate |
+| **`README.md` has three false claims** | `:62-64` (LaTeX fonts — false), `:114-116` (renv.lock contents — false), `:121-122` (renv minor-version warning — **disproven** by test, not merely unverified) | — |
+| **`mac:769`** | undocumented `sudo chown -R $(whoami) .config` in an inline code span, **relative path, no `cd`** | Recursive chown from an unknown working directory |
+| **PG-1: the "same version" rationale is false** | `mac:989`/`win:1189` mandate 17 to keep the cohort aligned; `ubu:1005-1007` gives 16 or 18; checker accepts all three | mac/Windows students downgrade for no benefit. **Policy call needed** |
+| **LOG-1: the sensitive-info warning is missing from 2 of 3 sample outputs** | present `ubu:1229`; truncated at `mac:1251-1253`, `win:1435-1437` | Two-thirds of the cohort never sees it, right before uploading the log |
+| **ALIAS-1: `rm -vi` on macOS vs `rm -vI` elsewhere** | `mac:1131` vs `ubu:1107`/`win:1311`; BSD `rm` supports `-I` | `rm *.pdf` prompts per file on macOS only |
+| **SYNC-1: cloud-sync warning is Windows-only** | `win:565-569`; no iCloud "Desktop & Documents" equivalent near `mac:477-481` | Same failure mode for `.venv`, `renv/`, `.git` |
+| **DOCKER-1: Ubuntu never verifies Docker** | `ubu:1024-1026` outsources it; `mac:1011`/`win:1211` run `hello-world` inline | No success criterion for Ubuntu students |
+| **GIT-1: the Git ≥ 2.23 floor is stated only on Ubuntu** | `ubu:194`; absent `mac:212-226`, `win:258-266`; checker accepts `git=2.*` | Missing on the platform where it's most likely |
+| **OUT-1: `ubu:1168` psql sample doesn't match the Linux code path** | shows `psql (PostgreSQL) 16.9`; script prints `psql 16.9` | Copy-across from the mac/Windows format |
+| **nbconvert `raw_mimetypes` asymmetry** | `text/latex` raw cells emitted by `--to latex`, silently dropped by `--to pdf` | Plausibly an upstream bug worth filing |
+| **43 `# CI-EXTRA` lines** (once written) | each is a documented gap the docs do not cover | Needs a triage step, not just a marker |
 
-## What execution found
+## Appendix A — what execution found
+
+The record of how the open items above were identified. Every claim here is marked
+in the evidence index for whether it was *executed* or *read*. Kept because the
+reasoning is reusable next time these guides are revised.
 
 ### The check log harvests every secret in the student's environment
 
-`check-setup-mds.sh:467-468` appends `env` verbatim to `check-setup-mds.log`, **and the
+the `env` dump in `check-setup-mds.sh` appends `env` verbatim to `check-setup-mds.log`, **and the
 workflow is built around students sending that file to instructors.**
 
 Verified by running it. A canary landed as expected — and so did four live credentials
@@ -389,7 +828,7 @@ the cheapest high-value assertion in the whole design.
 
 Two more: `ubu:1043` is **missing `-f`** like `mac:1061`, and it is worse here because
 `ubu:1058` sources the result from *every interactive shell* — UBC wifi is the canonical
-captive-portal environment. And `check-setup-mds.sh:481-486` `cat`s `~/.bashrc` into the
+captive-portal environment. And the shell-config dump in `check-setup-mds.sh` `cat`s `~/.bashrc` into the
 submitted log; on Ubuntu that file is the **primary, live** config, so it is a second
 secret-leak channel that **survives removing the `env` dump**.
 
@@ -409,7 +848,7 @@ no verification at all.
    that triggers the installer — the Git section accidentally does the verification the
    Xcode section fails to do.
 2. **`R --version` is architecture-blind, and macOS is the only platform where that
-   matters.** `check-setup-mds.sh:213` reads `head -1`; `Platform: aarch64-apple-darwin20`
+   matters.** the `sys_progs` version loop reads `head -1`; `Platform: aarch64-apple-darwin20`
    is line 3 and is never read. A student who downloads `R-4.6.1-x86_64.pkg` on an M-series
    Mac gets `OK R 4.6.1`, a Rosetta R, a package library the arm64 R will never see, and
    every source build compiled for the wrong architecture. **A false OK the checker
@@ -431,7 +870,7 @@ silently removes `brew` and everything installed with it from `PATH`. And becaus
 lines of instructions prints Apple's message telling the student to run `chsh -s /bin/zsh`** —
 the exact opposite of step one. Some will comply.
 
-**PostgreSQL: the doc and the checker test disjoint things.** `check-setup-mds.sh:119-125`
+**PostgreSQL: the doc and the checker test disjoint things.** the macOS `psql` probe loop in `check-setup-mds.sh`
 probes **only** `/Library/PostgreSQL/{18,17,16}/bin/psql` — the EnterpriseDB layout. A
 Postgres.app or Homebrew install yields `MISSING postgreSQL` **even with a working server and
 `psql` on `PATH`**, because the Darwin branch never falls back to `command -v psql` the way
@@ -500,7 +939,7 @@ The drift clusters in three places, and where it clusters tells you what kind of
    prefix and prints `OK psql 16.9…`. **These should be generated from a real run per OS,
    not hand-edited** — a natural output of the CI work.
 
-**The most consequential single instance:** `check-setup-mds.sh:518` prints
+**The most consequential single instance:** the closing “review for sensitive information” line prints
 *"Before sharing the log file, review that there is no SENSITIVE INFORMATION such as
 passwords or access tokens in it."* `ubu:1229` reproduces it; `mac:1251-1253` and
 `win:1435-1437` **truncate one line early and drop it**. So two-thirds of the cohort reads a
@@ -566,404 +1005,7 @@ September.** The linter is **content-based** — grep raw text for `apt install`
 and no dependency on the unresolved third fence category; the cost is an exclusion list for
 the 13 shell-config blocks above.
 
-## The CI design
-
-### Runner fidelity — negative controls are mandatory
-
-*(Runner-image contents below are read from image manifests, not executed — no Windows or
-macOS runner has been run in this review.)*
-
-`windows-2025` preinstalls **R 4.6.1**, **PostgreSQL 17 at exactly the path
-`check-setup-mds.sh:155-161` probes**, **Docker**, and **git**. So CI would report `OK` on
-the `.libPaths()` parity gate and the whole PostgreSQL section without executing a line of
-either. Docker is preinstalled on every runner.
-
-macOS 15 ships gfortran, which a student Mac does not — so `pak` source builds succeed in CI
-and fail for students. *(Hypothesis, not established: that this is the mechanism behind the
-macOS "R package won't install" tickets.)*
-
-**Every non-container job therefore runs a baseline preflight**: run the check script before
-installing anything, record the pre-satisfied set, exclude those from counting as a pass,
-and print them in the job summary.
-
-### Container job
-
-Run as root; `apt-get install -y git ca-certificates curl wget sudo gnupg lsb-release
-software-properties-common locales tzdata` **before** the first `uses:` step, or
-`actions/checkout@v6` falls back to the tarball path and leaves no `.git`. Actions cannot run
-per-step as a non-root user, so create `student` (uid ≠ 1000 — the image already has a
-`ubuntu` user there), `chown` a real `/home/student`, and run every doc-derived command *and*
-the final check through one `su - student -c` wrapper with `HOME` fixed.
-`check-setup-mds.sh:235` hardcodes `$HOME/mds-setup-check` **with no env override** — only
-`MDS_BASE_URL` is overridable — and a fake `HOME` also breaks the playwright cache probe,
-the shell-config capture, and R's user library.
-
-**PATH persistence: the mechanism is `~/.profile`, not `~/.bashrc`, and not `$GITHUB_PATH`.**
-`su - student -c` starts a *login* shell, so `~/.profile` is read even though it is
-non-interactive — and Ubuntu's stock `~/.profile` already prepends `$HOME/.local/bin` and
-`$HOME/bin`. `$GITHUB_PATH` is **inert**: `su -` resets `PATH` and re-runs
-`/etc/profile` + `~/.profile`, discarding it. Write `/etc/profile.d/mds-ci.sh` instead.
-
-*Not yet executed:* the claim that **only** the Quarto tools dir lacks a `~/.profile`
-counterpart. Have the job assert this at runtime rather than trusting it.
-
-**Locale.** The fixtures contain `Montréal · naïve · Öl · α β γ` and the container's `LANG`
-is `C`. `locales` + `locale-gen en_US.UTF-8` + exporting `LANG` are required and appear
-nowhere in the docs.
-
-### A second job in `install-check.yml` — assertions, not disclaimers
-
-A 5-minute `runs-on: ubuntu-24.04` job (no container) doing *only* the three
-systemd-dependent checks the container structurally cannot make: `hostnamectl` succeeds,
-`apt install postgresql` yields a running cluster reachable by `sudo su -c psql postgres`,
-and `docker run hello-world` works. Do **not** fake these inside the container by shimming
-`hostnamectl` — that makes the log lie about what was verified.
-
-### Two places CI goes green while lying
-
-Both found by drafting the installer. Both need a marker in the script *and* a line in the
-job summary.
-
-1. **Headless-Chromium dependencies.** `ubuntu:971-974` documents only `playwright install
-   chromium`; `check-setup-mds.sh:334-340` then tests WebPDF. On a desktop the ~15 GTK/NSS
-   libraries arrive with GNOME; in `ubuntu:24.04` they arrive only via the Positron/RStudio
-   `.deb` closures — so skipping the GUI apps breaks WebPDF for reasons unrelated to the
-   docs. Do not let this get fixed by accident.
-2. **`pak`'s system-requirements auto-install.** With passwordless sudo, `pak` silently
-   installs whatever `ubuntu:758`'s seven-package list forgot — and that list *is* incomplete
-   (no `libgit2-dev`, needed by `gert` → `usethis`/`devtools`). Set
-   `options(pkg.sysreqs = FALSE)` so the documented list is what is under test.
-
-### Installer conventions
-
-`ci/install-ubuntu.sh` **does not exist yet.** A ~330-line draft was produced during review
-and its census is the useful part: **101 lines carry a `[ubuntu:NNN]` citation, but 43 lines
-have no counterpart anywhere in the doc.** For every line lifted from the doc there is more
-than one that is not in it — "hand-transcribed" undersells it ~2×. Week 2 writes the real
-thing; the draft's marker census is the estimate to plan against, not committed code.
-
-| Marker | Meaning | Draft count |
-|---|---|---|
-| `# CI-SKIP:` | documented step deliberately not run | 14 |
-| `# CI-EXTRA:` | no counterpart in the doc — **each is an untested doc gap** | 43 |
-| `# CI-TRANSLATED:` | documented step, meaning kept, form changed | 11 |
-| `# CI-BOUNDARY:` | stands in for an "open a new terminal" step | 6 |
-
-Two details easy to get wrong first try:
-
-- **`R_LIBS_USER` must be created, and `path.expand()` is load-bearing.** R silently drops
-  `R_LIBS_USER` from `.libPaths()` when the directory does not exist — *that*, not a flag, is
-  what answers `ubuntu:767`'s "if asked about a personal library, select Yes". Without
-  `path.expand()` you create a directory literally named `~`.
-- **`ubuntu:446` clones upstream `main`.** Transcribed literally, the job tests nothing about
-  the PR. `MDS_REPO`/`MDS_REF` overrides are load-bearing.
-
-Skip the **whole** Stan section (`ubuntu:778-794`): `check-setup-mds.sh:363` checks neither
-`rstan` nor `StanHeaders`, and building them from source dominates wall-clock. `r-stack.yml`
-covers them.
-
-Also: `ubuntu:776` documents a prompt `pak` does not emit (a `remotes`/`devtools` leftover),
-and `ubuntu:905-907` is a prose-only conditional a script must resolve one way or the other.
-
-### The audit
-
-Comparing **prose samples** to upstream produces five findings today — uv 0.12.3→0.12.5,
-Positron 2026.08.0→2026.08.1-2, Quarto 1.10.3→1.10.18, renv 1.2.3→1.2.4, ottr 1.5.2→1.6.0 —
-all of which still pass their regex, i.e. all no-ops. A weekly issue opening with five
-non-actionable items gets muted by week two. So the primary assertion is
-**`check_regex` vs current upstream release**, not prose samples.
-
-**But that assertion is positive-only, and a tautology satisfies it forever.** Two manifest
-fields are mandatory, not niceties:
-
-- **`must_reject`** — negative controls per component (`one major below`, `one major above`).
-  Without them the audit would have validated all ten broken regexes weekly, indefinitely.
-- **`pin_policy`** — PostgreSQL (docs pin 17; upstream 18.6) and Quarto (stable 1.10.18 vs
-  prerelease 1.11.1) are deliberately below latest and would otherwise cry wolf every
-  September, muting the channel for the exact reason we killed the prose-sample audit.
-
-Comparison is three-way: doc prose ↔ `check_regex` ↔ upstream, filtered by `pin_policy`.
-
-**Scope.** `link-check.yml` passes no `--include-verbatim`, so lychee keeps only links from
-HTML attributes and drops every plaintext URL (confirmed in `html5gum.rs:371` and in this
-site's build output). But the fix is today's item 5 — one flag covers all 13 in-fence URLs —
-so the audit is scoped to two things only:
-
-1. `check_regex` vs upstream, with negative controls and `pin_policy`.
-2. Download-asset liveness for what CI never installs: **Positron, Quarto, RStudio, Docker
-   Desktop, the EnterpriseDB PostgreSQL 17 installer, and the ezwinports `make` zip**
-   (`windows:990`) — the last is non-GUI but every `make` instruction depends on it for a
-   third of the cohort.
-
-**Python packages audit against `uv.lock`, not PyPI.** All nine are lock-satisfied; the real
-exposure is internal — `pyproject.toml` carries lower bounds only (`pandas>=3`,
-`requires-python=">=3.14"`) while the checker demands exact majors, so one `uv lock --upgrade`
-breaks it with no upstream event. R packages *are* upstream-driven: `renv.lock` carries only
-rmarkdown/renv/tinytex; the other seven come from unpinned `pak::pkg_install`. `ottr` and
-`canlang` install from **git HEAD**, so a "latest *release*" question is structurally blind to
-them — `r-stack.yml` is their only guard.
-
-**Size:** four adapters (GitHub with three sub-modes, CRAN/r-universe, PyPI,
-postgresql.org) cover most gated components — **~300 lines plus a ~120-line manifest.**
-
-### What this CI does not tell you
-
-Printed in every job summary, because a green badge read as "the docs work" is worse than no
-badge:
-
-- Windows/macOS runners pre-satisfy R, PostgreSQL, Docker and git (mitigated by the
-  preflight, not eliminated).
-- macOS runners have gfortran; student Macs do not.
-- Intel macOS is never exercised — free public-repo macOS runners are arm64.
-- Every R command is documented as "type this into the RStudio console"; CI runs `Rscript`,
-  with different `.libPaths()` and no equivalent of "if asked about a personal library,
-  select Yes".
-- Miniconda is preinstalled on the Ubuntu and Windows runners, so `check-python-installs.sh`
-  always emits "Recommended to remove"; the clean run the docs promise is unreproducible.
-- **`docker --version` and `psql --version` have never verified a daemon or a cluster on any
-  platform** — that is not a container limitation but a permanent blind spot for the November
-  SQL and Docker courses.
-- `options(pkg.sysreqs = FALSE)` means CI tests the documented dependency list, not what a
-  student's `pak` would silently repair.
-- Network conditions differ from a student installing from outside Canada or on UBC wifi.
-
-## Triage: what actually fits in three weeks
-
-Assume ~30% of one person's time — roughly 36 hours, of which the list below is ~19 and the
-rest is buffer, because the merge will overrun.
-
-### The runners are also the test hardware
-
-Worth stating plainly, because it changes the CI's value proposition and this review
-under-weighted it: **GitHub Actions provides Linux, macOS and Windows runners, so the CI is
-the only accessible way to execute the paths this review could only read.** The Windows
-`msys` branch of `check-setup-mds.sh` has zero execution coverage anywhere, and it decides
-what a third of the cohort is told about their machine; the Ubuntu desktop paths were
-verified only against package manifests. Every finding that came from *running* something
-was worth more than the ones that came from reading, and the runners are how the remaining
-two platforms get run at all.
-
-That is an argument for pulling the Windows verification job earlier than pure
-regression-protection logic would suggest — not to certify `C:\Users\runneradmin`, but to
-execute 60 lines of Windows-only shell that nothing has ever executed. It does not change
-the September ordering below (the doc defects still outrank it), but it does mean the
-Windows job earns its place on discovery value, not just regression value.
-
-**And the mechanism is already there.** On GitHub-hosted Windows runners, `shell: bash`
-resolves to **Git for Windows bash** (`C:\Program Files\Git\bin\bash.EXE`), pre-installed on
-every Windows image. So the `msys` branch of `check-setup-mds.sh` runs on a hosted runner
-with no setup at all:
-
-```yaml
-jobs:
-  windows-job:
-    runs-on: windows-latest
-    steps:
-      - run: bash <(curl -Ssf "$MDS_BASE_URL/check-setup-mds.sh")
-        shell: bash
-```
-
-Two caveats to record. On **self-hosted** runners Git Bash is not guaranteed to be present or
-on `PATH` — it must be installed and its `bin` directory added to the PATH of the account
-running the runner service. And `shell:` does not accept a custom bash path, so a different
-environment (MSYS2, Cygwin) needs a `PATH` adjustment or a wrapper script, because the runner
-invokes whichever `bash` it finds. Neither affects the hosted-runner plan here.
-
-### Build exactly one workflow before September: `r-stack.yml`
-
-The review changed what the CI is *for*. The original premise was that the instructions
-might drift out of true. They aren't drifting — the shared blocks are byte-identical and
-someone has been propagating edits deliberately. What the review found instead is that the
-instructions are **wrong now**, in ways CI cannot fix, on a branch that hasn't merged.
-**CI protects against a future regression; it does nothing about a present defect.** Spending
-August on CI spends the scarce resource (three weeks) on the abundant one (nine months
-afterwards). The CI's real customer is the 2027-28 install update.
-
-The strongest argument against rushing it comes from this review: the originally-specced
-acceptance criterion — "three PDFs as artifacts" — **was green while the fixtures silently
-corrupted Greek characters.** A workflow that checks exit codes and artifact existence is
-worse than nothing, because it converts "we don't know" into "we checked."
-
-**`r-stack.yml` first, not `fixtures.yml`.** `fixtures.yml` guards files you control, in one
-repo, that this review just executed and found working, and that won't change unless you
-change them. `r-stack.yml` guards `ucbds-infra/ottr` and `ttimbers/canlang` installed **from
-git HEAD**, plus a 12-package `pak` resolution against live CRAN — things that can break
-between now and Sept 5 without anyone touching anything, and that break identically for all
-100 students on the same morning. It's also the cheapest item: ~60 lines, no LaTeX, no
-container, no matrix, no `su -` archaeology.
-
-### Six editing sessions — do not interleave them
-
-| Session | File | Contents |
-|---|---|---|
-| **A** | `check-setup-mds.sh` only | delete the `env` dump; macOS `command -v psql` fallback; preserve render logs on success; rmarkdown dump section; strip ANSI; fix the 404 message; quote `"${sys_progs[@]}"`; widen `positron`/`rstudio` to `20(26\|27)\.` and `docker` to `[23][0-9]\.` **Hard rule: do not touch the ten regexes here** — the moment you do, this session acquires three sample-output blocks and two machines you don't have |
-| **B** | `install_ds_stack_mac.md` | `chsh` verification + password warning + Homebrew caveat; `xcode-select -p`; `xattr` replacement; restore the sensitive-info line; add `newcomputermodern`; iCloud sync warning; `curl -f` at `:1061`; absolute path at `:769` |
-| **C** | `install_ds_stack_windows.md` | the `R_DIR` block and the "replace the section that reads" step (one contiguous edit closes three findings); the `.libPaths()` one-sentence fix; restore the sensitive-info line; add `newcomputermodern` |
-| **D** | `install_ds_stack_ubuntu.md` | add `newcomputermodern` only — it's the doc in the best shape |
-| **E** | this repo | renv `snapshot.type: implicit` + regenerate; delete the false README/qmd claims |
-| **F** | CI | `r-stack.yml` |
-
-**Ordering dependencies, worst first:**
-
-1. **B, C, D must land before the merge.** The merge date owns them.
-2. **`--include-verbatim` must come *after* the merge, not before.** I had this backwards:
-   `git grep check-python-installs main -- content` returns nothing, so no live page links
-   that URL and lychee cannot find it regardless of flags. Running it early proves nothing.
-3. **The 22nd `tlmgr` package must merge before any fixture asserts on the font — never the
-   reverse.** A fixture declaring `mainfont: NewCM10-Regular.otf` **hard-fails** under
-   fontspec on any machine whose TinyTeX lacks it. Ship the fixture change first and you
-   convert a silent Greek corruption that harms nobody in install week into a hard `make`
-   failure for 100 students in install week. **This is the most dangerous ordering
-   dependency in the plan.** Adding the package is safe and unilateral; do it now, change
-   the fixtures in October.
-4. **`fixtures.yml`, whenever built, must assert against *today's* behaviour** — `Montréal`,
-   `naïve`, `°C`, the en-dash, and the math-mode alpha — and **not** literal Greek, which is
-   still broken. Otherwise CI is red on day one and you'll train yourself to ignore it.
-
-### Realistic allocation
-
-- **Week 1 (Aug 17-21):** rotate tokens (0.5h) · Session E (2.5h) · Session A (1h) ·
-  Sessions B/C/D (5h) · buffer + read the branch's 34 commits (3h)
-- **Week 2 (Aug 24-28) — merge week, protect it:** merge and deploy (4h) · post-merge smoke
-  test from a clean `~` (1h) · `--include-verbatim` + reassign the link-rot issue off
-  `ZacWarham`/`zmx721` (0.5h) · `r-stack.yml` (4h) · buffer (2.5h)
-- **Week 3 (Aug 31-Sep 4):** **two colleagues do a cold install from the merged docs, one
-  Windows one Mac (2h)** — worth more than any workflow you can build this month, and the
-  only thing that exercises the Windows `msys` branch, which has zero execution coverage ·
-  fix what they find (2h) · `fixtures.yml` ubuntu-only with content assertions (4h) · file
-  the October list in YouTrack `UBC` (2h)
-
-### Drop entirely — real findings not worth fixing
-
-`rm -vi` vs `rm -vI` (the macOS variant is the *more* protective one; "fixing" it makes
-students' `rm` less safe) · the `PS1` colour divergence · `ubu:1168`'s psql sample
-parenthetical · `windows:910`'s wrong Rtools rationale (wrong prose, no failure mode) ·
-"how to exit psql" being Ubuntu-only (that's a Slack answer) · removing the five cargo-cult
-"open a new terminal" steps (saves 30 seconds, risks breaking a prose-carried session
-assumption — negative expected value) · the prose-sample version audit · `audit.py`'s
-download-liveness scope item (subsumed by `--include-verbatim` on a workflow that already
-exists) · **the "settle the TinyTeX-1 bundle contents" investigation** — adding the package
-unilaterally makes the answer irrelevant · triaging the 43 `# CI-EXTRA` lines, which don't
-exist yet.
-
-Also drop from active attention: `mds-help.sh` staleness (the branch copy is already
-updated — conda survives only as a documented one-year transition alias) and the IRkernel
-recipe (hand it to the teaching team, don't fix it here).
-
-### Corrections to earlier rounds, verified
-
-- **The renv finding is real but not a hard failure.** All 15 recommended packages ship with
-  R and are present in the system library, so `renv::restore()` finds them satisfied and
-  skips them — no source builds, no gfortran problem. What's real is the scary
-  `The project is out-of-sync` warning on every student machine, and `README.md:114-116`
-  being false. Fix it, but it isn't top-three.
-- **`README.md:121-122` is CORRECT, not "disproven".** `renv::status()` prints *"The lockfile
-  was generated with R 4.6.1, but you're using R 4.5.3."* An earlier round recorded the
-  opposite and this document repeated it.
-
-## Phases, with acceptance criteria inline
-
-*(Superseded for the September window by the triage above; retained as the shape of the work
-once the merge has landed and there is time to build properly.)*
-
-### Week 1 (Aug 17-21) — protect what students actually run
-
-| Deliverable | Done when |
-|---|---|
-| **Settle the TinyTeX-1 font question** — install the default bundle in a clean container, render one fixture | Either the Greek renders (font fix unnecessary for students; CI assertion still ships) or it does not (22nd `tlmgr` package confirmed necessary) |
-| **`fixtures.yml`** — `setup-r` pinned 4.6.x, Quarto at the documented version, **LaTeX the doc's way** (`tinytex::install_tinytex()` + the `tlmgr` list lifted to `ci/tlmgr-packages.txt`), then `uv sync --locked` → `make r-packages` → `make` → `playwright install chromium` → `make webpdf`. Matrix ubuntu/macos/windows, **plus baseline preflight** on all three. `on: [push, pull_request, schedule]`; `concurrency` with `cancel-in-progress: true` | Green on all three OSes, where green means **`ci/assert-pdf-text.py` passes**, not that PDFs exist. Two negative controls: break a `tlmgr` package name → red; revert the font fix → red. `check-notebook-web.pdf` is a free positive control and must stay green throughout |
-| **`r-stack.yml`** — nightly, ubuntu + macos; runs the documented R blocks verbatim: `install.packages('pak')`, the 12-entry `pak::pkg_install(...)` incl. `ucbds-infra/ottr` and `ttimbers/canlang`, then `StanHeaders`/`rstan` from r-universe. **Skip `example(stan_model)`** (20-40 min, checked by nothing). `${{ github.token }}` for GitHub rate limits | All 12 install without error; `installed.packages()` contains all ten of `check-setup-mds.sh:363`'s `r_pkgs`. Negative control: add a nonexistent package → red |
-
-The `ci/tlmgr-packages.txt` count is **21 today, 22 if the font fix proves necessary** — do
-not hard-code 21 before the first row of this table is answered.
-
-Note the push trigger is kept because this repo *will* change through August (fixtures,
-`ci/`), not because it won't — an earlier draft had that backwards.
-
-### Week 2 (Aug 24-28) — Ubuntu, by hand
-
-| Deliverable | Done when |
-|---|---|
-| **`ci/install-ubuntu.sh`** written fresh (draft census above as the estimate), with a header naming the doc sections it mirrors and the four markers | Reads top-to-bottom as something you would hand a student; every `# CI-EXTRA` line has a one-line justification |
-| **`install-check.yml`** — container job + the 5-minute non-container job; `timeout-minutes: 300` on the container job only; `concurrency` with **`cancel-in-progress: false`** (Aug 17-28 is when pushes are most frequent, and a 2.5-4h run must be allowed to finish); `if: always()` on uploads; every emitted command wrapped in `timeout 900`; **log stripped of the `## Environmental variables` section before upload** | `check-setup-mds.sh` produces an accepted-exception list short enough to read in full, starting with the `hostnamectl` case. Negative control: break a documented command → red |
-| **Settle: does `rstudio --version` work headless?** | Answered. If no, RStudio is a permanent accepted exception and `rstudio="2026\..*"` is exercised by nothing on Linux |
-
-### Week 3 (Aug 31-Sep 4) — breadth and the audit
-
-| Deliverable | Done when |
-|---|---|
-| **macOS verification-only job** — install via setup-actions (low fidelity, acknowledged), **baseline preflight first**, then run every `--version` and diff | Preflight output appears in the job summary and pre-satisfied components are excluded from passes |
-| **Windows job (~15 min) — only worth building WITH manufactured negative controls.** A stock runner is `C:\Users\runneradmin`: ASCII, no spaces, admin, local account, one R version — i.e. none of the conditions that actually break Windows students. Without the controls it is a badge certifying the easiest configuration in existence | (1) **No `\r` anywhere in `check-setup-mds.log`** — the regression guard for item 4. (2) The four hardcoded probe paths still exist. (3) `cygpath -w "$(mktemp -d)"` recorded, and one fixture rendered from a directory containing a space. (4) `.libPaths()` diffed between `pwsh` and Git Bash, with `R_USER` unset as the negative control. (5) **`R_DIR` control: create an empty `C:\Program Files\R\R-4.5.3\bin\x64\`, source the doc's two lines, assert `R --version` still reports 4.6.1 — this fails today.** (6) Hostile-path control: run once with `HOME` under a non-ASCII directory; expect failure, that failure is the finding |
-| **`ci/audit.py`** (~300 lines + ~120-line manifest) | Point a `check_regex` past upstream → issue opens; revert → closes. **Plus:** a `must_reject` entry fires; and PostgreSQL 17-vs-18.6 raises **nothing** (the `pin_policy` test — the audit's highest-risk component) |
-| **Job-summary disclaimer block** wired into all workflows | "What this CI does not tell you" appears in every run summary |
-| **Ownership shape applied to all four workflows** (`fixtures.yml`, `r-stack.yml`, `install-check.yml`, `version-audit.yml`) | Each has a label, an in-place issue, named assignees, and a final `exit 1` |
-
-### Post-September
-
-The content-based linter and the third fence-category convention. Promoting
-`ci/install-ubuntu.sh` toward a student installer — **"seed for", not "promote to"**: 14
-`# CI-SKIP` items are *mandatory* student steps, and four requirements point opposite ways
-(pinned vs current URLs; fail-fast vs resumable; NOPASSWD vs a 15-minute sudo timestamp
-across a 2-4h run; and idempotency, which matters only for students and on which CI exerts
-zero pressure). The realistic end state is one shared `ci/lib-mds-install.sh` with two thin
-drivers.
-
-Known idempotency hazards for that work, in severity order: bare `git clone` (`:446`, hard
-failure on re-run), three `~/.bashrc` appends totalling ~62 duplicated lines (`:238`, `:303`,
-`:1056`), and `tinytex::install_tinytex()` without an `is_tinytex()` guard (`:834`). The
-`tee -a` CRAN key (`:700`) is real but the least of these.
-
-## Open decisions and owners
-
-| Decision | Owner | Needed by | Notes |
-|---|---|---|---|
-| **Is literal (non-math) Greek in scope for MDS assignments?** | Dan | before Week 1 fixture work | Justifies 22 MB + a 22nd `tlmgr` package. Math mode already works; a column named `α` is silently corrupted today |
-| Does `rstudio --version` work headless? | — | Week 2 | Changes the shape of the container job |
-| Schedule location: cross-repo cron vs keepalive | — | Week 1 | **Recommend keepalive in this repo.** Driving the cron from the website repo dodges the 60-day auto-disable but puts failures for Dan's repo onto a file others maintain |
-| Third fence-category convention | — | post-Sept | Blocks a fence-aware linter; the content-based linter does not need it |
-| Docker 30: accept the clean break, or pre-empt it? | — | Week 1 | Anchoring `^Docker version (28\|29)\.` converts today's silent false-OK into a guaranteed mass false-MISSING the day 30 ships. Deliberate, but say so |
-| **`positron`/`rstudio` `2026\..*` expire January 2027** — mid-program, mass false-MISSING | — | before January | Diagnosed twice, assigned to nothing. Not among the ten fixed today (they are correctly anchored — they just expire) |
-
-**Named humans:** none of the four proposed workflows has an assignee. `link-check.yml:81`
-assigns to `ZacWarham` and `zmx721` — that is the *precedent's* assignees, not this project's.
-On `schedule` events GitHub emails **only the user who last committed the cron file**, so
-today the answer to "CI fails at 3am in November" is one email to Dan. The risk is not alert
-fatigue, it is an **unread channel** — which is worse, because a green dashboard nobody owns
-is exactly what the fixture bug demonstrates.
-
-## Defects found in passing — need tickets, not spec paragraphs
-
-None of these are CI work and none currently has an owner. Recommend filing in YouTrack
-(`UBC` project) rather than leaving here.
-
-| Defect | Evidence | Impact |
-|---|---|---|
-| **`windows:830` `R_DIR` selects the oldest R** | array subscript; verified locally with 4.5.3 + 4.6.1 present | Silent, affects a third of the cohort, more likely as the year progresses. **Fix before September** |
-| **`windows:830` glob has no failure path** | non-admin installs → `%LOCALAPPDATA%\Programs` (CRAN, R ≥ 4.2.0) | `R: command not found` with no diagnostic in the doc |
-| **`windows:1004-1018` make edit can delete `R_DIR`** | produces an empty PATH element = current directory | R breaks; symptom surfaces in the LaTeX section |
-| **`windows:882-896` `.libPaths()` gate is vacuous where placed** | personal library doesn't exist until `:922`; sample output at `:889-890` impossible at that point | The doc's most emphatic instruction currently protects nobody |
-| **`windows:93` sends ARM64 students to the x64 build** | an ARM64 User install exists; CRAN ships a different R installer for WoA, whose library is `aarch64-library` | Growing share of 2026 laptops |
-| **`windows:910` attributes Rtools PATH handling to RStudio** | it is R itself; CRAN says install order doesn't matter | Wrong reason implies terminal R can't compile |
-| **`windows:1189` mandates PostgreSQL 17; checker probes 18 first** | accepts 16\|17\|18 | Silently blesses a version the doc didn't ask for |
-| **No guidance on spaces or non-ASCII in the Windows profile path** | ezwinports `make` is a **32-bit ANSI** build (PE32/i386, verified); TeX Live is fragile there | International cohort; very hard to diagnose |
-| **`check-setup-mds_kcds-toolbox.sh` executes a 404 body** | fetches from a `master` branch **that does not exist** — 200s only via GitHub's rename redirect — with `curl -Ss`, no `-f`, piped to `bash <(…)` | Arbitrary-content execution for a *different UBC program*. No owner |
-| **`mds-help.sh` is stale and self-installing** | curled from `ubuntu:1118` into every student's shell; live copy is still the conda version | Student-facing |
-| **`mds-help.sh` documents 7 of 12 aliases** | omits `rm`, `mv`, `cp`, `mkdir`, and **`alias grep='grep -i'`** | `grep -i` silently changes DSCI 511 exercise answers, in the card students consult |
-| **IRkernel recipe cannot work** | `assignment-workflow-uv.md:320-324` runs `IRkernel::installspec()`; IRkernel is installed nowhere, and `check-setup-mds.sh:361` says its absence is *deliberate* | Already handed to the teaching team |
-| **`renv/settings.json` is `snapshot.type: "all"`** | 41 packages incl. 15 base/recommended; `make` prints `The project is out-of-sync` on every student machine | Install-week scare in a step that already scares people. Fix: `implicit` + regenerate |
-| **`README.md` has three false claims** | `:62-64` (LaTeX fonts — false), `:114-116` (renv.lock contents — false), `:121-122` (renv minor-version warning — **disproven** by test, not merely unverified) | — |
-| **`mac:769`** | undocumented `sudo chown -R $(whoami) .config` in an inline code span, **relative path, no `cd`** | Recursive chown from an unknown working directory |
-| **PG-1: the "same version" rationale is false** | `mac:989`/`win:1189` mandate 17 to keep the cohort aligned; `ubu:1005-1007` gives 16 or 18; checker accepts all three | mac/Windows students downgrade for no benefit. **Policy call needed** |
-| **LOG-1: the sensitive-info warning is missing from 2 of 3 sample outputs** | present `ubu:1229`; truncated at `mac:1251-1253`, `win:1435-1437` | Two-thirds of the cohort never sees it, right before uploading the log |
-| **ALIAS-1: `rm -vi` on macOS vs `rm -vI` elsewhere** | `mac:1131` vs `ubu:1107`/`win:1311`; BSD `rm` supports `-I` | `rm *.pdf` prompts per file on macOS only |
-| **SYNC-1: cloud-sync warning is Windows-only** | `win:565-569`; no iCloud "Desktop & Documents" equivalent near `mac:477-481` | Same failure mode for `.venv`, `renv/`, `.git` |
-| **DOCKER-1: Ubuntu never verifies Docker** | `ubu:1024-1026` outsources it; `mac:1011`/`win:1211` run `hello-world` inline | No success criterion for Ubuntu students |
-| **GIT-1: the Git ≥ 2.23 floor is stated only on Ubuntu** | `ubu:194`; absent `mac:212-226`, `win:258-266`; checker accepts `git=2.*` | Missing on the platform where it's most likely |
-| **OUT-1: `ubu:1168` psql sample doesn't match the Linux code path** | shows `psql (PostgreSQL) 16.9`; script prints `psql 16.9` | Copy-across from the mac/Windows format |
-| **nbconvert `raw_mimetypes` asymmetry** | `text/latex` raw cells emitted by `--to latex`, silently dropped by `--to pdf` | Plausibly an upstream bug worth filing |
-| **43 `# CI-EXTRA` lines** (once written) | each is a documented gap the docs do not cover | Needs a triage step, not just a marker |
-
-## Appendix — evidence index
+## Appendix B — evidence index
 
 Claims in this document verified by **execution** on this machine (macOS 15, arm64, R 4.5.3,
 Quarto 1.10.3, TeX Live 2026): the U+FFFD byte comparison and the font fix on all three
