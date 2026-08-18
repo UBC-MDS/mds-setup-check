@@ -447,9 +447,9 @@ container, no matrix, no `su -` archaeology.
 | Session | File | Contents |
 |---|---|---|
 | **A** | `check-setup-mds.sh` only | delete the `env` dump; macOS `command -v psql` fallback; preserve render logs on success; rmarkdown dump section; strip ANSI; fix the 404 message; quote `"${sys_progs[@]}"`; widen `positron`/`rstudio` to `20(26\|27)\.` and `docker` to `[23][0-9]\.` **Hard rule: do not touch the ten regexes here** — the moment you do, this session acquires three sample-output blocks and two machines you don't have |
-| **B** | `install_ds_stack_mac.md` | `chsh` verification + password warning + Homebrew caveat; `xcode-select -p`; `xattr` replacement; restore the sensitive-info line; add `newcomputermodern`; iCloud sync warning; `curl -f` at the script; absolute path at the script |
-| **C** | `install_ds_stack_windows.md` | the `R_DIR` block and the "replace the section that reads" step (one contiguous edit closes three findings); the `.libPaths()` one-sentence fix; restore the sensitive-info line; add `newcomputermodern` |
-| **D** | `install_ds_stack_ubuntu.md` | add `newcomputermodern` only — it's the doc in the best shape |
+| **B** | `install_ds_stack_mac.md` | `chsh` verification + password warning + Homebrew caveat; `xcode-select -p`; `xattr` replacement; restore the sensitive-info line; ~~add `newcomputermodern`~~ (closed, see above); iCloud sync warning; `curl -f` at the script; absolute path at the script |
+| **C** | `install_ds_stack_windows.md` | the `R_DIR` block and the "replace the section that reads" step (one contiguous edit closes three findings); the `.libPaths()` one-sentence fix; restore the sensitive-info line; ~~add `newcomputermodern`~~ (closed, see above) |
+| **D** | `install_ds_stack_ubuntu.md` | ~~add `newcomputermodern`~~ — closed, see above, so this session has nothing left in it |
 | **E** | this repo | renv `snapshot.type: implicit` + regenerate; delete the false README/qmd claims |
 | **F** | CI | `r-stack.yml` |
 
