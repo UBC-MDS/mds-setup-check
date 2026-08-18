@@ -184,17 +184,21 @@ is the one to know before writing an assignment. Every LaTeX route above replace
 those characters with nothing and still reports success, so a student gets a clean
 looking PDF with content missing. Measured on the fixtures in this repository:
 
-| | accents, dashes | inline, display, `equation` | `\begin{align}` | Greek, emoji | images |
+| | accents, dashes | inline, display, `equation` | `$$\begin{aligned}$$` | raw `\begin{align}` | Greek, emoji | images |
 | --- | --- | --- | --- | --- | --- |
-| LaTeX, all three routes | yes | yes | yes | **no** | yes |
-| Typst | yes | yes | **no** | yes | yes |
-| HTML | yes | yes | yes | yes | yes |
-| WebPDF | yes | yes | yes | yes | yes |
+| LaTeX, all three routes | yes | yes | yes | yes | **no** | yes |
+| Typst | yes | yes | yes | **no** | yes | yes |
+| HTML | yes | yes | yes | yes | yes | yes |
+| WebPDF | yes | yes | yes | yes | yes | yes |
 
-**Neither PDF engine handles everything, and they fail in opposite directions.**
-LaTeX drops Greek and emoji; Typst drops `\begin{align}`. Both do it silently and
-both still report success. A document with aligned multi-line equations wants
-LaTeX; one with emoji wants Typst; one with both has to be HTML or WebPDF.
+**Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`, not as a bare
+`\begin{align}`.** The bare form is a raw LaTeX environment that pandoc passes
+through untranslated, so Typst never sees it and renders nothing, silently. Inside
+`$$` it is maths that pandoc parses, and every route handles it.
+
+That leaves one real split: **LaTeX cannot do Greek or emoji.** Written as maths
+(`$\alpha$`) Greek works everywhere, so in practice only emoji force the choice —
+and for those, use Typst, HTML or WebPDF.
 
 Mathematics is unaffected: `$\alpha$` typesets correctly everywhere, because maths
 is set from a different font. It is only literal `α` in prose that disappears. So

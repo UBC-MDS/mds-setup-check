@@ -5,6 +5,13 @@ author: UBC Master of Data Science
 # reticulate is involved and nothing has to locate this project's Python from
 # inside R. Python is checked by check-quarto.qmd instead.
 engine: knitr
+# knitr opens a graphics device for every chunk, even ones that draw nothing. On a
+# machine without XQuartz, R's default probe reaches for X11 and the render dies
+# with "dev.control() called without an open graphics device". Naming a device
+# that needs no display avoids it, and costs nothing here.
+knitr:
+  opts_chunk:
+    dev: "png"
 format:
   pdf:
     output-file: check-quarto-r-latex.pdf
@@ -53,12 +60,16 @@ A numbered equation:
 \hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
 \end{equation}
 
-Several lines aligned on the equals sign:
+Several lines aligned on the equals sign. Written as `aligned` inside `$$`, which
+every route understands. A bare `\begin{align}` is a raw LaTeX environment that
+Typst never sees, so it silently renders nothing there:
 
-\begin{align}
+$$
+\begin{aligned}
 \mathbb{E}[\hat{\beta}] &= \beta \\
 \mathrm{Var}(\hat{\beta}) &= \sigma^2 (X^{\top}X)^{-1}
-\end{align}
+\end{aligned}
+$$
 
 ## Characters that are not plain English
 

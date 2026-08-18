@@ -14,6 +14,13 @@ Exit:   0 if the contract holds, 1 otherwise.
 """
 import pathlib
 import sys
+
+# Windows consoles default to a legacy codepage, and these scripts print the very
+# characters they are checking for. Without this, a report mentioning α dies with
+# UnicodeEncodeError on Windows and takes the whole check with it.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import tomllib
 
 FAIL = []

@@ -46,12 +46,16 @@ A numbered equation:
 \hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
 \end{equation}
 
-Several lines aligned on the equals sign:
+Several lines aligned on the equals sign. Written as `aligned` inside `$$`, which
+every route understands. A bare `\begin{align}` is a raw LaTeX environment that
+Typst never sees, so it silently renders nothing there:
 
-\begin{align}
+$$
+\begin{aligned}
 \mathbb{E}[\hat{\beta}] &= \beta \\
 \mathrm{Var}(\hat{\beta}) &= \sigma^2 (X^{\top}X)^{-1}
-\end{align}
+\end{aligned}
+$$
 
 ## Characters that are not plain English
 

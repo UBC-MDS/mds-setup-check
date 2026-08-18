@@ -14,6 +14,13 @@ Usage:  python ci/assert-renders.py
 Exit:   0 if every present output holds what that route should hold, 1 otherwise.
 """
 import sys
+
+# Windows consoles default to a legacy codepage, and these scripts print the very
+# characters they are checking for. Without this, a report mentioning α dies with
+# UnicodeEncodeError on Windows and takes the whole check with it.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import pathlib
 import re
 
@@ -22,7 +29,7 @@ import re
 #   absent - the route is known not to support it; assert it is NOT there, so
 #            that a future fix is noticed rather than silently absorbed
 LATEX = "latex"   # accents and maths yes; Greek and emoji dropped
-TYPST = "typst"   # Greek and emoji yes; \begin{align} dropped
+TYPST = "typst"   # Greek and emoji yes; raw LaTeX environments dropped
 FULL = "full"     # HTML and the browser route: everything
 
 # Routes known not to produce output at all, with the reason. A route listed here
@@ -59,7 +66,7 @@ CHECKS = [
     ("curly quotes",   ["“", "”"],          {LATEX, TYPST, FULL}),
     ("inline maths",   ["𝛽", "β", "unbiased"], {LATEX, TYPST, FULL}),
     ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}),
-    ("aligned eqns",   ["Var"],             {LATEX, FULL}),
+    ("aligned eqns",   ["Var"],             {LATEX, TYPST, FULL}),
     ("literal Greek",  ["α"],               {TYPST, FULL}),
     ("emoji",          ["✅", "📊"],         {TYPST, FULL}),
 ]

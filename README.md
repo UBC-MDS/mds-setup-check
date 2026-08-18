@@ -84,7 +84,8 @@ it from the rendered files, and `make check` fails if any cell stops being true.
 | inline maths — `$\alpha$` | yes | yes | yes | yes |
 | display equation — `$$…$$` | yes | yes | yes | yes |
 | numbered equation — `\begin{equation}` | yes | yes | yes | yes |
-| **aligned equations — `\begin{align}`** | yes | **no** | yes | yes |
+| aligned equations — `$$\begin{aligned}…$$` | yes | yes | yes | yes |
+| **raw `\begin{align}` environment** | yes | **no** | yes | yes |
 | embedded image | yes | yes | yes | yes |
 
 Every route in a column behaves identically, so `Quarto -> LaTeX`, `nbconvert -> LaTeX`
@@ -110,10 +111,12 @@ Two of these are worth knowing before writing an assignment:
   exits successfully, so the PDF simply arrives with holes in it. A data frame
   column named `α` disappears the same way. Render with Typst if the document needs
   them.
-- **Typst silently drops `\begin{align}`.** It handles inline maths, `$$…$$` and
-  `\begin{equation}` — only the align environment is lost, and again without a
-  warning. So a document with aligned multi-line equations wants LaTeX, and a
-  document with emoji wants Typst. A document with both needs HTML or WebPDF.
+- **Typst silently drops raw LaTeX environments.** `\begin{align}` written at the
+  top level is a raw block that pandoc passes through untranslated, so Typst never
+  sees any maths and renders nothing — without a warning. Typst aligns equations
+  perfectly well when the maths is written as `$$\begin{aligned}…\end{aligned}$$`,
+  which pandoc parses and converts. **Use `aligned` inside `$$`, not bare `align`**,
+  and every route works.
 
 `make clean` deletes everything the renders produced.
 
