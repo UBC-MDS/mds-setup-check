@@ -1,6 +1,6 @@
 # Testing the MDS install instructions and the assignment workflow
 
-**Status:** restructured 2026-08-17 · **Originally written:** 2026-08-15, from six council review rounds
+**Status:** first workflow implemented, 2026-08-17 · **Originally written:** 2026-08-15, from six council review rounds
 
 Two things need protecting, and only one of them was in the original scope:
 
@@ -11,29 +11,35 @@ Two things need protecting, and only one of them was in the original scope:
 
 The original request was CI for the install instructions. The review that followed found the
 instructions were *wrong now* in ways CI cannot fix, so the defect findings dominated the
-document. Most of those are fixed. What remains is below; the findings are kept in
-[Appendix A](#appendix-a--what-execution-found) as the record of how they were identified.
+document. Most of those are fixed. The first workflow is built and covers the second target;
+the findings are kept in [Appendix A](#appendix-a--what-execution-found) as the record of how
+they were identified.
 
 ## Status
 
-**Done since this was written**
+**Done**
 
 | | |
 |---|---|
-| Install-guide branch merged | live site serves `v2026.08.17`; `check-python-installs.sh` returns 200, not 404 |
+| Install-guide branch merged | live site serves `v2026.08.17` |
 | 19 mistagged code fences | fixed; three were rendering visibly wrong on the live site |
-| The `env` secret dump | fixed, and **better than this document proposed** — see the decision record below |
-| Script relocation | done — all three curled scripts now live here, which this document recommended **against** |
+| The `env` secret dump | now an interactive y/N prompt defaulting to no |
+| Script relocation | all three curled scripts live here, served from `ubc-mds.github.io/mds-setup-check/` — this document recommended **against** it and was wrong; see the decision record |
+| pandoc | installed directly from pandoc.org on all three OSes, rather than borrowed from Quarto through a `PATH` edit |
+| pandoc version check | raised to >= 3.10, and made a real version test rather than a substring match |
+| `Makefile` | `commands` / `install` / `all` / `check` / `clean`, self-documenting, Git Bash compatible |
+| **`assignment-workflow.yml`** | **built** — the first workflow, described below |
 
 **Still open**
 
 | item | where | blocked on |
 |---|---|---|
-| `${sys_progs[@]}` is unquoted | `check-setup-mds.sh`, the `sys_progs` loop | nothing — one character |
 | `apt install curl` missing | Ubuntu install guide | nothing — **highest-severity finding here** |
+| Glob expansion in `sys_progs` | `check-setup-mds.sh` | nothing — needs the array *elements* quoted, not the loop |
 | `--include-verbatim` | `link-check.yml` in the website repo | nothing — one flag |
-| `newcomputermodern` in the `tlmgr` list | all three install guides | the Greek-scope decision below |
-| Version-regex anchoring | `check-setup-mds.sh` | deliberately deferred to October |
+| `newcomputermodern` in the `tlmgr` list | all three install guides | a decision: it fixes literal Greek under LaTeX, nothing fixes emoji there |
+| Emoji in the fixtures | this repo | the same decision |
+| Version-regex anchoring for the other ten | `check-setup-mds.sh` | deliberately deferred; see the note on why it is not a 30-minute job |
 
 ## Open work, in order
 

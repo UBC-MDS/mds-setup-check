@@ -1,0 +1,116 @@
+# Tests what a student does every week, rather than what they do once in September.
+#
+# assignment-workflow-uv.md names this repository as the reference implementation
+# for MDS assignment repos, and its pyproject.toml is the template those repos are
+# copied from. So exercising the workflow here exercises the template.
+#
+# The job asserts on the CONTENT of the rendered documents, not on exit codes.
+# Every LaTeX route in this project exits 0 while silently replacing characters it
+# has no glyph for, so a check that only looks at exit codes passes on a broken
+# document. That is the failure this workflow exists to catch.
+
+name: Assignment workflow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Mondays at 15:00 UTC. This repository can sit unchanged for months, so the
+    # push trigger alone would never fire; everything that breaks it is upstream.
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: assignment-workflow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    # Git Bash on the Windows runner, so one set of commands works everywhere.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # ---------------------------------------------------------------- tools --
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          # renv.lock declares 4.6.1; a different minor makes renv warn on every run.
+          r-version: "4.6"
+
+      # pandoc is not a Python package and uv cannot install it. The install guides
+      # have students install it from pandoc.org for exactly this reason.
+      - uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.10.2"
+
+      - name: Install TinyTeX and the LaTeX packages the guides list
+        uses: r-lib/actions/setup-tinytex@v2
+
+      - name: Add the tlmgr packages from the install guides
+        run: tlmgr install $(tr '\n' ' ' < ci/tlmgr-packages.txt)
+
+      # ------------------------------------------------------------- the repo --
+      # --locked also proves pyproject.toml has not drifted from uv.lock.
+      - name: uv sync --locked
+        run: uv sync --locked
+
+      - name: Install the browser the WebPDF route needs
+        run: uv run playwright install --with-deps chromium
+
+      - name: Restore the R library
+        run: Rscript -e 'renv::restore(prompt = FALSE)'
+
+      # ------------------------------------------------- the repo's contract ---
+      # assignment-workflow-uv.md section 3 makes claims about this file that
+      # assignment repos are copied from. If they stop being true, every repo
+      # derived from it inherits the problem.
+      - name: Check the pyproject contract
+        run: uv run python ci/assert-contract.py
+
+      # JupyterLab is installed but never started. What is worth asserting is that
+      # the server extensions resolve, which is the claim that justifies jupyterlab
+      # being a real dependency rather than a dev one.
+      - name: JupyterLab extensions resolve
+        run: |
+          uv run jupyter --version
+          uv run jupyter server extension list 2>&1 | tee /tmp/ext.txt
+          for ext in jupyterlab_git jupytext jupyterlab_spellchecker; do
+            grep -q "$ext" /tmp/ext.txt || { echo "missing server extension: $ext"; exit 1; }
+          done
+
+      # ------------------------------------------------------------- renders ---
+      # -k so that one broken route does not hide the others. Which routes work is
+      # the information this job exists to produce.
+      - name: Render every route
+        run: make -k all
+
+      - name: Check the rendered documents contain what they should
+        run: make check
+
+      - name: Upload the rendered documents
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-${{ matrix.os }}
+          path: |
+            check-*.pdf
+            check-*.html
+          if-no-files-found: warn

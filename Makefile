@@ -21,7 +21,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all install clean pdf typst html webpdf
+.PHONY: commands all install clean check pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -43,14 +43,14 @@ install:  ## Install the Python and R packages, and the browser for webpdf
 # -------------------------------------------------------------------- all ----
 all: pdf typst html webpdf  ## Render every document by every route
 
-pdf: check-quarto.pdf check-notebook.pdf check-rmarkdown.pdf  ## Render to PDF through LaTeX
+pdf: check-quarto-latex.pdf check-notebook.pdf check-rmarkdown.pdf  ## Render to PDF through LaTeX
 typst: check-quarto-typst.pdf  ## Render to PDF through Typst, which handles emoji and Greek
 html: check-quarto.html check-notebook.html check-rmarkdown.html  ## Render to HTML
 
 # Quarto is the route MDS asks you to use for anything you hand in.
 # check-quarto.qmd contains a Python code chunk, so Quarto has to find this
 # project's Python and start a kernel in it before it can render the document.
-check-quarto.pdf: check-quarto.qmd
+check-quarto-latex.pdf: check-quarto.qmd
 	uv run quarto render $< --to pdf
 
 check-quarto.html: check-quarto.qmd
@@ -58,8 +58,12 @@ check-quarto.html: check-quarto.qmd
 
 # Typst is Quarto's other PDF engine. It needs no LaTeX at all, and unlike the
 # LaTeX route it reproduces emoji, literal Greek letters and symbols.
+#
+# The output file names are set per format in check-quarto.qmd, because Quarto
+# treats the LaTeX PDF and the Typst PDF as the same output for a given input
+# unless they are named apart, and rendering one then deletes the other.
 check-quarto-typst.pdf: check-quarto.qmd
-	uv run quarto render $< --to typst --output check-quarto-typst.pdf
+	uv run quarto render $< --to typst
 
 # The same route as JupyterLab's File -> Save and Export Notebook As... -> PDF.
 # It goes through pandoc and LaTeX.
@@ -84,9 +88,16 @@ check-rmarkdown.html: check-rmarkdown.Rmd
 webpdf: check-notebook.ipynb  ## Render to PDF through a headless browser
 	uv run jupyter nbconvert $< --to webpdf --output check-notebook-web
 
+# ------------------------------------------------------------------ check ----
+# Rendering is not the same as rendering correctly: every LaTeX route exits 0
+# while silently dropping characters it has no glyph for. This looks inside the
+# rendered files instead of at the exit codes.
+check:  ## Check the rendered documents actually contain what they should
+	uv run python ci/assert-renders.py
+
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced
-	rm -f check-quarto.pdf check-notebook.pdf check-rmarkdown.pdf
+	rm -f check-quarto-latex.pdf check-notebook.pdf check-rmarkdown.pdf
 	rm -f check-quarto-typst.pdf
 	rm -f check-quarto.html check-notebook.html check-rmarkdown.html
 	rm -f check-notebook-web.pdf
