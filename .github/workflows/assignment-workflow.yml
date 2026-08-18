@@ -61,11 +61,18 @@ jobs:
         with:
           pandoc-version: "3.10.2"
 
-      - name: Install TinyTeX and the LaTeX packages the guides list
+      - name: Install TinyTeX
         uses: r-lib/actions/setup-tinytex@v2
 
-      - name: Add the tlmgr packages from the install guides
-        run: tlmgr install $(tr '\n' ' ' < ci/tlmgr-packages.txt)
+      # Driven through R's tinytex package rather than calling tlmgr directly.
+      # TeX Live ships `tlmgr.bat` on Windows and `tlmgr` everywhere else, so a
+      # bare `tlmgr install` is command-not-found on the Windows runner. The R
+      # package resolves that difference itself, and it is the same route the
+      # install guides put in front of students.
+      - name: Add the LaTeX packages the install guides list
+        run: |
+          Rscript -e 'if (!requireNamespace("tinytex", quietly = TRUE)) install.packages("tinytex", repos = "https://cloud.r-project.org")'
+          Rscript -e 'tinytex::tlmgr_install(readLines("ci/tlmgr-packages.txt"))'
 
       # ------------------------------------------------------------- the repo --
       # --locked also proves pyproject.toml has not drifted from uv.lock.
