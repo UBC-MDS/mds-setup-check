@@ -90,13 +90,15 @@ make webpdf
 | `check-rmarkdown.Rmd` | R Markdown fixture |
 | `check-setup-mds.sh` | the setup check itself, the script students are told to run |
 | `check-python-installs.sh` | reports every Python already on the machine; run on its own before installing uv, and again from inside the setup check |
+| `mds-help.sh` | the `mds-help` reference card students install into their shell |
 
-The two `check-*.sh` scripts are served straight out of this repository by GitHub
+The three scripts above are served straight out of this repository by GitHub
 Pages, so the copy students run is always the copy on `main`:
 
 ```
 https://ubc-mds.github.io/mds-setup-check/check-setup-mds.sh
 https://ubc-mds.github.io/mds-setup-check/check-python-installs.sh
+https://ubc-mds.github.io/mds-setup-check/mds-help.sh
 ```
 
 That is why `.nojekyll` and `index.html` are here. They are not part of the check.
