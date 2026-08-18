@@ -387,7 +387,7 @@ container, no matrix, no `su -` archaeology.
 | Session | File | Contents |
 |---|---|---|
 | **A** | `check-setup-mds.sh` only | delete the `env` dump; macOS `command -v psql` fallback; preserve render logs on success; rmarkdown dump section; strip ANSI; fix the 404 message; quote `"${sys_progs[@]}"`; widen `positron`/`rstudio` to `20(26\|27)\.` and `docker` to `[23][0-9]\.` **Hard rule: do not touch the ten regexes here** — the moment you do, this session acquires three sample-output blocks and two machines you don't have |
-| **B** | `install_ds_stack_mac.md` | `chsh` verification + password warning + Homebrew caveat; `xcode-select -p`; `xattr` replacement; restore the sensitive-info line; add `newcomputermodern`; iCloud sync warning; `curl -f` at `:1061`; absolute path at `:769` |
+| **B** | `install_ds_stack_mac.md` | `chsh` verification + password warning + Homebrew caveat; `xcode-select -p`; `xattr` replacement; restore the sensitive-info line; add `newcomputermodern`; iCloud sync warning; `curl -f` at the script; absolute path at the script |
 | **C** | `install_ds_stack_windows.md` | the `R_DIR` block and the "replace the section that reads" step (one contiguous edit closes three findings); the `.libPaths()` one-sentence fix; restore the sensitive-info line; add `newcomputermodern` |
 | **D** | `install_ds_stack_ubuntu.md` | add `newcomputermodern` only — it's the doc in the best shape |
 | **E** | this repo | renv `snapshot.type: implicit` + regenerate; delete the false README/qmd claims |
@@ -493,10 +493,10 @@ across a 2-4h run; and idempotency, which matters only for students and on which
 zero pressure). The realistic end state is one shared `ci/lib-mds-install.sh` with two thin
 drivers.
 
-Known idempotency hazards for that work, in severity order: bare `git clone` (`:446`, hard
-failure on re-run), three `~/.bashrc` appends totalling ~62 duplicated lines (`:238`, `:303`,
-`:1056`), and `tinytex::install_tinytex()` without an `is_tinytex()` guard (`:834`). The
-`tee -a` CRAN key (`:700`) is real but the least of these.
+Known idempotency hazards for that work, in severity order: bare `git clone` (the script, hard
+failure on re-run), three `~/.bashrc` appends totalling ~62 duplicated lines (the script, the script,
+the script), and `tinytex::install_tinytex()` without an `is_tinytex()` guard (the script). The
+`tee -a` CRAN key (the script) is real but the least of these.
 
 ## Open decisions and owners
 
@@ -526,7 +526,7 @@ None of these are CI work and none currently has an owner. Recommend filing in Y
 | **`windows:830` `R_DIR` selects the oldest R** | array subscript; verified locally with 4.5.3 + 4.6.1 present | Silent, affects a third of the cohort, more likely as the year progresses. **Fix before September** |
 | **`windows:830` glob has no failure path** | non-admin installs → `%LOCALAPPDATA%\Programs` (CRAN, R ≥ 4.2.0) | `R: command not found` with no diagnostic in the doc |
 | **`windows:1004-1018` make edit can delete `R_DIR`** | produces an empty PATH element = current directory | R breaks; symptom surfaces in the LaTeX section |
-| **`windows:882-896` `.libPaths()` gate is vacuous where placed** | personal library doesn't exist until `:922`; sample output at `:889-890` impossible at that point | The doc's most emphatic instruction currently protects nobody |
+| **`windows:882-896` `.libPaths()` gate is vacuous where placed** | personal library doesn't exist until the script; sample output at the script impossible at that point | The doc's most emphatic instruction currently protects nobody |
 | **`windows:93` sends ARM64 students to the x64 build** | an ARM64 User install exists; CRAN ships a different R installer for WoA, whose library is `aarch64-library` | Growing share of 2026 laptops |
 | **`windows:910` attributes Rtools PATH handling to RStudio** | it is R itself; CRAN says install order doesn't matter | Wrong reason implies terminal R can't compile |
 | **`windows:1189` mandates PostgreSQL 17; checker probes 18 first** | accepts 16\|17\|18 | Silently blesses a version the doc didn't ask for |
@@ -536,7 +536,7 @@ None of these are CI work and none currently has an owner. Recommend filing in Y
 | **`mds-help.sh` documents 7 of 12 aliases** | omits `rm`, `mv`, `cp`, `mkdir`, and **`alias grep='grep -i'`** | `grep -i` silently changes DSCI 511 exercise answers, in the card students consult |
 | **IRkernel recipe cannot work** | `assignment-workflow-uv.md:320-324` runs `IRkernel::installspec()`; IRkernel is installed nowhere, and the `r_pkgs` list in `check-setup-mds.sh` says its absence is *deliberate* | Already handed to the teaching team |
 | **`renv/settings.json` is `snapshot.type: "all"`** | 41 packages incl. 15 base/recommended; `make` prints `The project is out-of-sync` on every student machine | Install-week scare in a step that already scares people. Fix: `implicit` + regenerate |
-| **`README.md` has three false claims** | `:62-64` (LaTeX fonts — false), `:114-116` (renv.lock contents — false), `:121-122` (renv minor-version warning — **disproven** by test, not merely unverified) | — |
+| **`README.md` has three false claims** | the script (LaTeX fonts — false), the script (renv.lock contents — false), the script (renv minor-version warning — **disproven** by test, not merely unverified) | — |
 | **`mac:769`** | undocumented `sudo chown -R $(whoami) .config` in an inline code span, **relative path, no `cd`** | Recursive chown from an unknown working directory |
 | **PG-1: the "same version" rationale is false** | `mac:989`/`win:1189` mandate 17 to keep the cohort aligned; `ubu:1005-1007` gives 16 or 18; checker accepts all three | mac/Windows students downgrade for no benefit. **Policy call needed** |
 | **LOG-1: the sensitive-info warning is missing from 2 of 3 sample outputs** | present `ubu:1229`; truncated at `mac:1251-1253`, `win:1435-1437` | Two-thirds of the cohort never sees it, right before uploading the log |
@@ -566,13 +566,16 @@ and `YOUTRACK_TOKEN` (1 line, `perm-`).
 
 Three aggravating factors visible only by running it:
 
-1. **Students never see the section.** stdout ends at `:432`; the env block is appended at
-   `:467` and never `tee`d. The warning at `:518` asks students to audit for "passwords or
+1. **Students never see the section.** stdout ends at the script; the env block is appended at
+   the log tail and never `tee`d. the closing warning asks students to audit for "passwords or
    access tokens" in a section they were never shown.
-2. **The shell config it exists to capture is dead on macOS.** Both `~/.bash_profile` and
-   `~/.bashrc` reported "not found" — macOS has defaulted to zsh since 2019. So on
-   essentially every Mac student it captures **every secret and none of the config it
-   wanted.** The trade is exactly backwards.
+2. **The shell-config capture behaved oddly on the review machine**, which runs zsh: both
+   `~/.bash_profile` and `~/.bashrc` reported "not found". **This does not generalise to
+   students.** The macOS guide deliberately switches every student to bash (`chsh -s
+   /bin/bash`) so the whole cohort is on one shell — a sound call, since it makes lecture
+   material and TA support uniform. For a student who followed the guide the capture works
+   and `~/.bash_profile` is read as intended. What remains true is that the capture is
+   downstream of a step nothing verifies; see the `chsh` gap in the macOS section.
 3. It is the one finding here that is urgent independent of the September deadline.
 
 ### The checker can't fail, and its version checks don't check versions
@@ -609,7 +612,7 @@ The fix is anchoring and escaping — `^R version 4\.`, `^GNU Make 4\.`,
 `^Docker version (28|29)\.` — verified per program against its real first line, since the
 formats differ.
 
-Same line, separate one-character defect: **`${sys_progs[@]}` at `:197` is unquoted**, so
+Same line, separate one-character defect: **`${sys_progs[@]}` at the script is unquoted**, so
 the regexes glob-expand against the student's working directory. It is latent — it fires
 only when matching files exist — but demonstrated: with `R=4.txt`, `latex=3.pdf` and
 `docker=28.log` present, the checks silently *become those filenames*.
@@ -626,7 +629,7 @@ negative controls provide.
 On a machine with TinyTeX installed but not on `PATH`, the log says `MISSING latex=3.*` and
 `OK  quarto PDF-generation was successful.` **twelve lines apart** — because knitr/tinytex
 and Quarto resolve the engine through `tinytex_root()`, never `PATH`. A student cannot
-reconcile those two lines, and `:310` deletes the only file that could: 45 lines naming
+reconcile those two lines, and the script deletes the only file that could: 45 lines naming
 `LuaHBTeX, Version 1.24.0 (TeX Live 2026)` and `Output created: check-quarto.pdf`.
 
 **The rule: preserve the render logs on success. Do not gate deletion on a zero-MISSING
@@ -634,7 +637,7 @@ run** — the Greek-character bug below produces a clean, zero-MISSING run *and*
 worth keeping, so a zero-MISSING gate destroys exactly the evidence that matters. Delete
 never, or only under an explicit `MDS_CI=1`.
 
-The rmarkdown branches (`:409`, `:417`) send both streams to `/dev/null`, so they have no
+The rmarkdown branches (the script, the script) send both streams to `/dev/null`, so they have no
 dump section at all, and their advice ("check that latex is marked OK above") actively
 misleads on the machine just described.
 
@@ -642,7 +645,7 @@ macOS-specific: `find_pandoc` selects by **highest version, not list order**, an
 **x86_64 pandoc under Rosetta** on Apple Silicon. The log is written with raw ANSI escapes,
 which render as garbage in the editor students are told to open it in.
 
-Reads right *and* measures right: the neutral-directory defence at `:370` is load-bearing —
+Reads right *and* measures right: the neutral-directory defence at the script is load-bearing —
 inside the project renv narrows R to 55 packages; from the neutral dir there are 357.
 
 ### The fixtures pass while broken
@@ -741,10 +744,10 @@ likely over the year. The reputation that "students get this step wrong" is misp
 step is wrong and the students are following it correctly.**
 
 **The `.libPaths()` parity gate is vacuous where it stands.** It carries the doc's strongest
-language — "Do not continue unless…" — but sits at `:882`, *before* `install.packages` at
-`:922`. At that point `%LOCALAPPDATA%\R\win-library\4.6` does not exist, so R drops it and
+language — "Do not continue unless…" — but sits at the script, *before* `install.packages` at
+the script. At that point `%LOCALAPPDATA%\R\win-library\4.6` does not exist, so R drops it and
 both sides return a single element: the gate passes for everyone, and **the two-element
-sample output the doc prints at `:889-890` cannot occur at that point in the instructions.**
+sample output the doc prints at the script cannot occur at that point in the instructions.**
 It is also aimed at the wrong quantity: since R 4.2.0 the personal library derives from
 `LOCALAPPDATA`, which is identical in both processes by construction. The divergence it was
 written for is real and CRAN documents it — MSYS2 sets `HOME`, so `~` differs by exactly
@@ -754,7 +757,7 @@ Fix it, don't delete it: move it after `install.packages`, or rewrite it to comp
 RStudio** after setting the env var, though RStudio was opened 16 lines earlier.
 
 Open question only a Windows run can settle: **what does `mktemp -d` become when handed to a
-native `.exe`?** `:293`, `:370`, `:399` do exactly that, and the answer is either a path
+native `.exe`?** the script, the script, the script do exactly that, and the answer is either a path
 under `Program Files` (a space for everyone) or under `AppData\Local\Temp` (a space only for
 spaced usernames). TeX with spaces in paths is a classic failure, and this gates all four
 PDF checks. One line settles it: `cygpath -w "$(mktemp -d)"`.
@@ -992,7 +995,7 @@ Three further facts make extraction structurally insufficient regardless:
    come from a hand-written, manifest-sourced step — a shim was always mandatory, so the
    original design already contained the hand-written approach without admitting it.
 2. **Session boundaries.** Of the Ubuntu doc's eight "open a new terminal" steps, only three
-   are real — `:308` (Quarto tools dir), `:388` (uv), `:838` (TinyTeX); the rest are cargo
+   are real — the script (Quarto tools dir), the script (uv), the script (TinyTeX); the rest are cargo
    cult because the `.deb` already put the binary on PATH.
 3. **~49% of tagged blocks misbehave** under run-by-default — file contents, GUI-editor
    launches, six blocking `jupyter lab` calls, and blocks whose expected failure depends on
