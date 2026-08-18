@@ -131,49 +131,62 @@ nbconvert only reads `.ipynb` and `rmarkdown` only reads `.Rmd`.
 
 **`.qmd`**
 
-| input | rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
+| input | rendered by | output | accented latin | degree sign | en dash | curly quotes | inline maths | display eqn | aligned eqns | literal Greek | emoji | middot | numbered eqn | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | `check-quarto-py.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-quarto-r.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-quarto-r.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-r.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-r.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | `check-quarto-r.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-**`.ipynb`** — `check-notebook.ipynb`
+**`.ipynb`**
 
-| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| nbconvert ⚠️ | LaTeX PDF | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| nbconvert | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| nbconvert | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| input | rendered by | output | accented latin | degree sign | en dash | curly quotes | inline maths | display eqn | aligned eqns | literal Greek | emoji | middot | numbered eqn | markdown table | image |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `check-notebook.ipynb` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | — | ✅ |
+| `check-notebook.ipynb` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert API | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook-table.ipynb` | nbconvert ⚠️ | LaTeX PDF | — | — | — | — | — | — | — | — | — | — | — | ❌ | — |
+| `check-notebook-table.ipynb` | nbconvert | HTML | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
+| `check-notebook-table.ipynb` | Quarto | LaTeX PDF | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
 
-⚠️ **nbconvert → LaTeX PDF produces no file at all.** nbconvert's LaTeX template emits \LTcaptype{none} for a markdown table, which this TeX Live rejects with "No counter 'none' defined". Any notebook containing a markdown table fails JupyterLab's PDF export for the same reason. Rendering the same notebook through Quarto works, table and all.
+⚠️ **nbconvert → LaTeX PDF produces no file at all.** nbconvert's LaTeX template emits \LTcaptype{none} for a markdown table, which this TeX Live rejects with "No counter 'none' defined". A notebook containing a markdown table fails JupyterLab's PDF export for this reason, and one without a table exports fine -- which is why the table lives in a fixture of its own. Rendering the same notebook through Quarto works, table and all.
 
 **`.Rmd`** — `check-rmarkdown.Rmd`
 
-| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
+| rendered by | output | accented latin | degree sign | en dash | curly quotes | inline maths | display eqn | aligned eqns | literal Greek | emoji | middot | numbered eqn | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| rmarkdown | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| rmarkdown | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | rmarkdown | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 <!-- end matrix -->
 
-**Windows: WebPDF does not work.** playwright drives the browser through asyncio
-subprocesses, which raise `NotImplementedError` on Windows in this Python, so that row is
-✅ here and would be ❌ on a Windows machine. The same notebook exports fine on macOS and
-Linux. `make check` knows this and does not fail the Windows run over it.
+**Windows: `nbconvert → WebPDF` does not work**, so that row is ✅ here and would be
+❌ on a Windows machine. `make check` knows this and does not fail the Windows run
+over it.
 
-The input format matters as much as the output one. `check-notebook.ipynb` to a
-LaTeX PDF is the only route of the seventeen that fails outright, and the same
-output format from the same notebook through Quarto is fine — so that failure is a
-property of nbconvert, not of PDFs and not of notebooks.
+It is worth knowing *why*, because it is neither Windows nor playwright. nbconvert's
+command-line application sets `WindowsSelectorEventLoopPolicy` for tornado and pyzmq,
+and its own WebPDF exporter then runs playwright under that policy — and a
+`SelectorEventLoop` is the one Windows event loop that cannot start a subprocess, so
+launching Chromium raises `NotImplementedError`. The **`nbconvert API`** row beside it
+is the same exporter called directly, bypassing that one line, and it is green on
+Windows. Students still cannot use WebPDF there, because JupyterLab's export menu goes
+through `jupyter_server`, which sets the same policy — but the row means the cause is
+attributable, and it will turn green the day upstream fixes it.
+
+The input format matters as much as the output one. `check-notebook-table.ipynb` to a
+LaTeX PDF via nbconvert is the only route of the twenty-one that fails outright, and
+the same output format from the same notebook through Quarto is fine — so that failure
+is a property of nbconvert's LaTeX template, not of PDFs and not of notebooks.
 
 **Use this table when something looks wrong in an assignment.** If a character is
 missing and the table says **no** for that route, it is a known limitation of the
@@ -186,10 +199,12 @@ Three things are worth knowing before writing an assignment:
   as maths — `$\alpha$` rather than `α` — works in every route, and is the right
   spelling in a statistics program anyway. Emoji have no portable form, so a
   document that needs them wants Typst or HTML — or WebPDF, on a Mac or on Linux.
-- **Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`.** A bare
-  `\begin{align}` is a raw LaTeX environment that pandoc passes through
-  untranslated, so Typst never sees any maths and renders nothing — silently.
-  Inside `$$` every route handles it.
+- **Write equations as `$$…$$`, and multi-line ones as
+  `$$\begin{aligned}…\end{aligned}$$`.** A bare `\begin{align}` or
+  `\begin{equation}` is a raw LaTeX environment that pandoc passes through
+  untranslated, so Typst never sees any maths and renders nothing — silently. That is
+  the `numbered eqn` ❌ on every Typst row above: the fixtures write that one the
+  failing way on purpose. Inside `$$` every route handles it.
 - **A notebook containing a markdown table cannot be exported to PDF from
   JupyterLab.** nbconvert's template writes `\LTcaptype{none}`, which this TeX Live
   rejects. Rendering the same notebook through Quarto works, table and all, so the
