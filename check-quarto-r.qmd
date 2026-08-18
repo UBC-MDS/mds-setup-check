@@ -33,12 +33,37 @@ data.frame(
 )
 ```
 
+## An image
+
+Assignments include plots and images, which have to survive the render too.
+
+![The UBC MDS logo](mds-logo.png){width=200}
+
+## Mathematics
+
+Inline: the estimator $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$ is unbiased.
+
+A display equation:
+
+$$ \mathrm{RSS} = \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $$
+
+A numbered equation:
+
+\begin{equation}
+\hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
+\end{equation}
+
+Several lines aligned on the equals sign:
+
+\begin{align}
+\mathbb{E}[\hat{\beta}] &= \beta \\
+\mathrm{Var}(\hat{\beta}) &= \sigma^2 (X^{\top}X)^{-1}
+\end{align}
+
 ## Characters that are not plain English
 
-Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · "curly quotes" · ✅ ❌ 📊 ⚠️
+Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · “curly quotes” · ✅ ❌ 📊 ⚠️
 
-Mathematics is typeset separately from ordinary text, so it works everywhere:
-$\alpha = 0.05$ and $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$.
 
 **What you should see.** In the HTML and in the Typst PDF, every character above
 appears. In the LaTeX PDF the accents, the dashes and the mathematics appear, but

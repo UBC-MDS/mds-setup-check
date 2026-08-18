@@ -21,7 +21,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all install clean check pdf typst html webpdf
+.PHONY: commands all install clean check matrix pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -44,7 +44,7 @@ install:  ## Install the Python and R packages, and the browser for webpdf
 all: pdf typst html webpdf  ## Render every document by every route
 
 pdf: check-quarto-latex.pdf check-quarto-r-latex.pdf check-notebook.pdf check-rmarkdown.pdf  ## Render to PDF through LaTeX
-typst: check-quarto-typst.pdf check-quarto-r-typst.pdf  ## Render to PDF through Typst, which handles emoji and Greek
+typst: check-quarto-typst.pdf check-quarto-r-typst.pdf  ## Render to PDF through Typst: emoji and Greek yes, \begin{align} no
 html: check-quarto.html check-quarto-r.html check-notebook.html check-rmarkdown.html  ## Render to HTML
 
 # Quarto is the route MDS asks you to use for anything you hand in.
@@ -106,6 +106,9 @@ webpdf: check-notebook.ipynb  ## Render to PDF through a headless browser
 # rendered files instead of at the exit codes.
 check:  ## Check the rendered documents actually contain what they should
 	uv run python ci/assert-renders.py
+
+matrix:  ## Print the feature-by-route table that is in the README
+	uv run python ci/feature-matrix.py
 
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced

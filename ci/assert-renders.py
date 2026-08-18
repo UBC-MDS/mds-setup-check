@@ -21,16 +21,17 @@ import re
 #   ok     - must be present, the route supports it
 #   absent - the route is known not to support it; assert it is NOT there, so
 #            that a future fix is noticed rather than silently absorbed
-LATEX = "latex"
-FULL = "full"
+LATEX = "latex"   # accents and maths yes; Greek and emoji dropped
+TYPST = "typst"   # Greek and emoji yes; \begin{align} dropped
+FULL = "full"     # HTML and the browser route: everything
 
 ROUTES = {
     "check-quarto-latex.pdf":  ("Quarto -> LaTeX",      LATEX),
     "check-notebook.pdf":      ("nbconvert -> LaTeX",   LATEX),
     "check-rmarkdown.pdf":     ("rmarkdown -> LaTeX",   LATEX),
-    "check-quarto-typst.pdf":  ("Quarto -> Typst",      FULL),
+    "check-quarto-typst.pdf":  ("Quarto -> Typst",      TYPST),
     "check-quarto-r-latex.pdf": ("Quarto R -> LaTeX",   LATEX),
-    "check-quarto-r-typst.pdf": ("Quarto R -> Typst",   FULL),
+    "check-quarto-r-typst.pdf": ("Quarto R -> Typst",   TYPST),
     "check-quarto-r.html":     ("Quarto R -> HTML",     FULL),
     "check-notebook-web.pdf":  ("nbconvert -> Chromium", FULL),
     "check-quarto.html":       ("Quarto -> HTML",       FULL),
@@ -38,13 +39,19 @@ ROUTES = {
     "check-rmarkdown.html":    ("rmarkdown -> HTML",    FULL),
 }
 
-# (label, string, supported-by)
+# (label, needles, supported-by). A check passes if ANY needle is present, which
+# matters because the same character can extract differently per engine: LaTeX sets
+# maths in U+1D6FD MATHEMATICAL ITALIC SMALL BETA, not U+03B2.
 CHECKS = [
-    ("accented latin", "Montréal", {LATEX, FULL}),
-    ("degree sign",    "°C",       {LATEX, FULL}),
-    ("en dash",        "–",        {LATEX, FULL}),
-    ("literal Greek",  "α",        {FULL}),
-    ("emoji",          "✅",       {FULL}),
+    ("accented latin", ["Montréal"],        {LATEX, TYPST, FULL}),
+    ("degree sign",    ["°"],               {LATEX, TYPST, FULL}),
+    ("en dash",        ["–"],               {LATEX, TYPST, FULL}),
+    ("curly quotes",   ["“", "”"],          {LATEX, TYPST, FULL}),
+    ("inline maths",   ["𝛽", "β", "unbiased"], {LATEX, TYPST, FULL}),
+    ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}),
+    ("aligned eqns",   ["Var"],             {LATEX, FULL}),
+    ("literal Greek",  ["α"],               {TYPST, FULL}),
+    ("emoji",          ["✅", "📊"],         {TYPST, FULL}),
 ]
 
 
@@ -74,16 +81,16 @@ def main() -> int:
             continue
 
         problems = []
-        for desc, needle, supported in CHECKS:
-            present = needle in body
+        for desc, needles, supported in CHECKS:
+            present = any(n in body for n in needles)
             if kind in supported and not present:
-                problems.append(f"missing {desc} ({needle!r})")
+                problems.append(f"missing {desc} ({needles[0]!r})")
             elif kind not in supported and present:
                 problems.append(
-                    f"{desc} ({needle!r}) now renders -- this route was not "
+                    f"{desc} ({needles[0]!r}) now renders -- this route was not "
                     f"expected to support it; update ci/assert-renders.py")
         # A replacement character means a glyph was dropped, whatever it was.
-        if kind == FULL and "�" in body:
+        if kind in (TYPST, FULL) and "�" in body:
             problems.append("contains U+FFFD, so something was dropped")
 
         if problems:

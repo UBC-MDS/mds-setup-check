@@ -184,12 +184,17 @@ is the one to know before writing an assignment. Every LaTeX route above replace
 those characters with nothing and still reports success, so a student gets a clean
 looking PDF with content missing. Measured on the fixtures in this repository:
 
-| | accents, dashes, maths | Greek letters, emoji |
-| --- | --- | --- |
-| LaTeX, all three routes | yes | **no** |
-| Typst | yes | yes |
-| HTML | yes | yes |
-| WebPDF | yes | yes |
+| | accents, dashes | inline, display, `equation` | `\begin{align}` | Greek, emoji | images |
+| --- | --- | --- | --- | --- | --- |
+| LaTeX, all three routes | yes | yes | yes | **no** | yes |
+| Typst | yes | yes | **no** | yes | yes |
+| HTML | yes | yes | yes | yes | yes |
+| WebPDF | yes | yes | yes | yes | yes |
+
+**Neither PDF engine handles everything, and they fail in opposite directions.**
+LaTeX drops Greek and emoji; Typst drops `\begin{align}`. Both do it silently and
+both still report success. A document with aligned multi-line equations wants
+LaTeX; one with emoji wants Typst; one with both has to be HTML or WebPDF.
 
 Mathematics is unaffected: `$\alpha$` typesets correctly everywhere, because maths
 is set from a different font. It is only literal `α` in prose that disappears. So

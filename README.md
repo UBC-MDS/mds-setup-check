@@ -68,23 +68,43 @@ R and Python live in separate documents on purpose. Putting both in one would
 need `reticulate` to locate this project's Python from inside R, which is a thing
 that goes wrong often enough not to be worth meeting in week one.
 
-### Not every route can typeset every character
+### What renders where
 
-Each document ends with a line of accents, Greek letters, dashes and emoji, and
-with a line of mathematics. Those do not all survive every route, which is a fact
-about the tools rather than a fault in your installation:
+Each fixture contains the same set of features, so the same table applies whichever
+document you look at. **This is measured, not asserted** — `make matrix` regenerates
+it from the rendered files, and `make check` fails if any cell stops being true.
 
-| route | accents, dashes, maths | Greek letters, emoji |
-| --- | --- | --- |
-| `make pdf` — LaTeX | yes | **no** |
-| `make typst` — Typst | yes | yes |
-| `make html` | yes | yes |
-| `make webpdf` — headless browser | yes | yes |
+| feature | LaTeX PDF | Typst PDF | HTML | WebPDF |
+|---|---|---|---|---|
+| accented latin — `Montréal`, `naïve`, `Öl` | yes | yes | yes | yes |
+| degree sign, middot, en dash | yes | yes | yes | yes |
+| curly quotes | yes | yes | yes | yes |
+| **literal Greek in prose — `α β γ`** | **no** | yes | yes | yes |
+| **emoji — `✅ ❌ 📊 ⚠️`** | **no** | yes | yes | yes |
+| inline maths — `$\alpha$` | yes | yes | yes | yes |
+| display equation — `$$…$$` | yes | yes | yes | yes |
+| numbered equation — `\begin{equation}` | yes | yes | yes | yes |
+| **aligned equations — `\begin{align}`** | yes | **no** | yes | yes |
+| embedded image | yes | yes | yes | yes |
 
-LaTeX drops the characters it has no glyph for **silently**, and still reports
-success. So if an assignment contains emoji and has to be a PDF, render it with
-Typst. `make check` asserts all of this, which is why it looks inside the rendered
-files rather than only checking that they exist.
+Every route in a column behaves identically, so `Quarto -> LaTeX`, `nbconvert -> LaTeX`
+and `rmarkdown -> LaTeX` are one column here.
+
+**Use this table when something looks wrong in an assignment.** If a character is
+missing from a rendered PDF and the table says **no** for that route, it is a known
+limitation of the engine rather than a broken installation, and the fix is to change
+route rather than to reinstall anything.
+
+Two of these are worth knowing before writing an assignment:
+
+- **LaTeX silently drops Greek letters and emoji.** It does not warn, and it still
+  exits successfully, so the PDF simply arrives with holes in it. A data frame
+  column named `α` disappears the same way. Render with Typst if the document needs
+  them.
+- **Typst silently drops `\begin{align}`.** It handles inline maths, `$$…$$` and
+  `\begin{equation}` — only the align environment is lost, and again without a
+  warning. So a document with aligned multi-line equations wants LaTeX, and a
+  document with emoji wants Typst. A document with both needs HTML or WebPDF.
 
 `make clean` deletes everything the renders produced.
 
