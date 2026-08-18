@@ -66,18 +66,19 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
-    failures, checked = [], 0
+    missing, broken, ok = [], [], []
+
     for name, (label, kind) in ROUTES.items():
         path = pathlib.Path(name)
         if not path.exists():
-            print(f"  skip   {label:<24} {name} not produced")
+            missing.append((label, name))
+            print(f"  MISSING  {label:<24} {name} was not produced")
             continue
-        checked += 1
         try:
             body = text_of(path)
         except Exception as exc:                      # noqa: BLE001
-            failures.append(f"{name}: could not read ({exc})")
-            print(f"  FAIL   {label:<24} unreadable: {exc}")
+            broken.append(f"{name}: could not be read ({exc})")
+            print(f"  FAIL     {label:<24} unreadable: {exc}")
             continue
 
         problems = []
@@ -89,24 +90,43 @@ def main() -> int:
                 problems.append(
                     f"{desc} ({needles[0]!r}) now renders -- this route was not "
                     f"expected to support it; update ci/assert-renders.py")
-        # A replacement character means a glyph was dropped, whatever it was.
-        if kind in (TYPST, FULL) and "�" in body:
+        if kind in (TYPST, FULL) and "\ufffd" in body:
             problems.append("contains U+FFFD, so something was dropped")
 
         if problems:
-            failures.append(f"{name}: " + "; ".join(problems))
-            print(f"  FAIL   {label:<24} " + "; ".join(problems))
+            broken.append(f"{name}: " + "; ".join(problems))
+            print(f"  FAIL     {label:<24} " + "; ".join(problems))
         else:
-            print(f"  ok     {label:<24} {name}")
+            ok.append(name)
+            print(f"  ok       {label:<24} {name}")
 
     print()
-    if checked == 0:
-        print("No rendered output found. Run `make -k all` first.")
+    total = len(ROUTES)
+
+    if len(missing) == total:
+        print("Nothing has been rendered yet. Run `make all` first.")
         return 1
-    if failures:
-        print(f"{len(failures)} of {checked} rendered output(s) failed.")
+
+    if missing:
+        print(f"{len(missing)} of {total} routes produced no output at all:")
+        for label, name in missing:
+            print(f"  - {label}  (expected {name})")
+        print("  These routes failed to render. Re-run `make -k all` and read the")
+        print("  error for each one; `-k` keeps going so one failure does not hide")
+        print("  the rest.")
+        print()
+
+    if broken:
+        print(f"{len(broken)} of {total} routes rendered but the content is wrong:")
+        for b in broken:
+            print(f"  - {b}")
+        print()
+
+    if missing or broken:
+        print(f"{len(ok)} of {total} routes are fully correct.")
         return 1
-    print(f"All {checked} rendered output(s) contain what they should.")
+
+    print(f"All {total} routes rendered, and each contains what it should.")
     return 0
 
 
