@@ -104,10 +104,19 @@ jobs:
           done
 
       # ------------------------------------------------------------- renders ---
-      # -k so that one broken route does not hide the others. Which routes work is
+      # -k so that one broken route does not hide the others: which routes work is
       # the information this job exists to produce.
+      #
+      # The exit code is deliberately ignored here. `make` returns non-zero if any
+      # target failed, and one is expected to -- a notebook containing a markdown
+      # table cannot be exported to PDF by nbconvert. `make check` is the gate, and
+      # it knows which failures are known limitations and which are not. Letting
+      # make fail the job here would mean encoding that list in two places.
       - name: Render every route
-        run: make -k all
+        run: make -k all || true
+
+      - name: Show which outputs were produced
+        run: ls -la check-*.pdf check-*.html || true
 
       - name: Check the rendered documents contain what they should
         run: make check
