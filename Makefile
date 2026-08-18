@@ -58,7 +58,7 @@ HTML_OUT  = check-quarto-py.html check-quarto-r.html \
             check-notebook-quarto.html check-rmarkdown-quarto.html \
             check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html \
             check-notebook-table-nbconvert.html
-WEBPDF_OUT = check-notebook-nbconvert-web.pdf
+WEBPDF_OUT = check-notebook-nbconvert-web.pdf check-notebook-nbconvert-api-web.pdf
 
 # Four documents in three input formats, three renderers, four output formats. Quarto can render every input
 # format, so those combinations are all here; nbconvert only reads .ipynb and
@@ -135,6 +135,13 @@ webpdf: $(WEBPDF_OUT)  ## Render to PDF through a headless browser
 check-notebook-nbconvert-web.pdf: check-notebook.ipynb
 	uv run jupyter nbconvert $< --to webpdf --output $(basename $@) \
 	|| uv run jupyter nbconvert $< --to webpdf --output $(basename $@)
+
+# The same export, driven through nbconvert's exporter API rather than its command
+# line. The CLI cannot do this on Windows, and this route is here to show that the
+# reason is one line in the CLI rather than anything about the platform. Read
+# ci/webpdf.py for the mechanism. Retried once for the same network reason.
+check-notebook-nbconvert-api-web.pdf: check-notebook.ipynb ci/webpdf.py
+	uv run python ci/webpdf.py $< $@ || uv run python ci/webpdf.py $< $@
 
 # ------------------------------------------------------------------ check ----
 # Rendering is not the same as rendering correctly: every LaTeX route exits 0

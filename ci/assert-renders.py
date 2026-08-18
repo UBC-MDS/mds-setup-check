@@ -41,9 +41,14 @@ FULL = "full"     # HTML and the browser route: everything
 KNOWN_TO_FAIL = {
     "check-notebook-nbconvert-web.pdf": (
         {"win32"},
-        "playwright drives the browser through asyncio subprocesses, which raise "
-        "NotImplementedError on Windows in this Python. WebPDF export therefore "
-        "does not work there; the same notebook exports fine on macOS and Linux."),
+        "nbconvert's command-line application sets WindowsSelectorEventLoopPolicy in "
+        "NbConvertApp.initialize, for tornado and pyzmq. Its own WebPDF exporter then "
+        "runs playwright under that policy, and a SelectorEventLoop cannot start a "
+        "subprocess -- so launching Chromium raises NotImplementedError. Neither "
+        "Windows nor playwright is at fault: the nbconvert API route beside this one "
+        "exports the same notebook on the same machine. Students meet it anyway, "
+        "because JupyterLab's export menu goes through jupyter_server, which sets the "
+        "same policy. Use Typst on Windows."),
     "check-notebook-table-nbconvert-latex.pdf":
         "nbconvert's LaTeX template emits \\LTcaptype{none} for a markdown table, "
         "which this TeX Live rejects with \"No counter 'none' defined\". A notebook "
@@ -84,6 +89,10 @@ ROUTES = {
     "check-notebook-nbconvert-latex.pdf": ("ipynb   -> nbconvert -> LaTeX",  LATEX, IPYNB),
     "check-notebook-nbconvert.html":      ("ipynb   -> nbconvert -> HTML",   FULL,  IPYNB),
     "check-notebook-nbconvert-web.pdf":   ("ipynb   -> nbconvert -> WebPDF", FULL,  IPYNB),
+    # Same exporter, called directly instead of through nbconvert's command line.
+    # Expected to work everywhere, including where the command line cannot.
+    "check-notebook-nbconvert-api-web.pdf":
+                                          ("ipynb   -> nbconvert API -> WebPDF", FULL, IPYNB),
     "check-rmarkdown-quarto-latex.pdf":   ("Rmd     -> Quarto -> LaTeX",     LATEX, RMD),
     "check-rmarkdown-quarto-typst.pdf":   ("Rmd     -> Quarto -> Typst",     TYPST, RMD),
     "check-rmarkdown-quarto.html":        ("Rmd     -> Quarto -> HTML",      FULL,  RMD),
