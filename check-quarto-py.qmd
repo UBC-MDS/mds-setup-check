@@ -60,10 +60,12 @@ A display equation:
 
 $$ \mathrm{RSS} = \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $$
 
-A numbered equation:
+A numbered equation. Like `\begin{align}` below, `\begin{equation}` is a raw
+LaTeX environment that pandoc hands through untranslated, so Typst receives no
+maths and silently renders nothing here. LaTeX and HTML both set it:
 
 \begin{equation}
-\hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
+\mathrm{MSE} = \hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
 \end{equation}
 
 Several lines aligned on the equals sign. Written as `aligned` inside `$$`, which

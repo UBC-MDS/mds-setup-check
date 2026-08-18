@@ -2,7 +2,12 @@
 #
 #   make install   install everything this project needs, in both languages
 #   make all       render every document by every route
+#   make check     say whether the results are actually correct
 #   make clean     delete everything the renders produced
+#
+# Those are the three commands, in that order. Everything a student needs to run
+# lives in this file rather than in the README, so that what they run and what CI
+# runs cannot drift apart.
 #
 # There are four output routes, and they do not all handle the same characters:
 #
@@ -21,7 +26,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all install clean check matrix matrix-check pdf typst html webpdf
+.PHONY: commands all render install clean check check-docs matrix matrix-check pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -41,7 +46,19 @@ install:  ## Install the Python and R packages, and the browser for webpdf
 	Rscript -e 'renv::restore(prompt = FALSE)'
 
 # -------------------------------------------------------------------- all ----
-all: pdf typst html webpdf  ## Render every document by every route
+# A recipe rather than a list of prerequisites, so that the keep-going flag is part
+# of the target instead of something the student has to remember. One route is known
+# not to work -- check-notebook-table.ipynb cannot be exported to PDF by nbconvert --
+# and a bare `make` would stop there, leaving every later route unrendered and
+# looking broken. The exit code is ignored for the same reason: `make check` is the
+# verdict, and it is the only thing that knows which failures are expected.
+all:  ## Render every document by every route
+	@$(MAKE) -k render || true
+	@echo
+	@echo 'Rendering finished. Now run `make check` to find out whether the results'
+	@echo 'are correct -- rendering without errors is not the same as rendering right.'
+
+render: pdf typst html webpdf  ## Render, without the keep-going wrapper (used by CI)
 
 # Every output name carries the tool that produced it. That is not only for
 # reading the table: Quarto compiles `check-rmarkdown.Rmd` to an intermediate
@@ -49,13 +66,16 @@ all: pdf typst html webpdf  ## Render every document by every route
 # after the input alone gets eaten by whichever route runs next.
 LATEX_OUT = check-quarto-py-latex.pdf check-quarto-r-latex.pdf \
             check-notebook-quarto-latex.pdf check-rmarkdown-quarto-latex.pdf \
-            check-notebook-nbconvert-latex.pdf check-rmarkdown-rmarkdown-latex.pdf
+            check-notebook-nbconvert-latex.pdf check-rmarkdown-rmarkdown-latex.pdf \
+            check-notebook-table-nbconvert-latex.pdf \
+            check-notebook-table-quarto-latex.pdf
 TYPST_OUT = check-quarto-py-typst.pdf check-quarto-r-typst.pdf \
             check-notebook-quarto-typst.pdf check-rmarkdown-quarto-typst.pdf
 HTML_OUT  = check-quarto-py.html check-quarto-r.html \
             check-notebook-quarto.html check-rmarkdown-quarto.html \
-            check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html
-WEBPDF_OUT = check-notebook-nbconvert-web.pdf
+            check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html \
+            check-notebook-table-nbconvert.html
+WEBPDF_OUT = check-notebook-nbconvert-web.pdf check-notebook-nbconvert-api-web.pdf
 
 # Four documents in three input formats, three renderers, four output formats. Quarto can render every input
 # format, so those combinations are all here; nbconvert only reads .ipynb and
@@ -101,6 +121,20 @@ check-notebook-nbconvert-latex.pdf: check-notebook.ipynb
 check-notebook-nbconvert.html: check-notebook.ipynb
 	uv run jupyter nbconvert $< --to html --output $(basename $@)
 
+# --- the markdown table, alone -----------------------------------------------
+# One construct, three routes. nbconvert's HTML is fine and Quarto's LaTeX is fine,
+# so when the first of these fails it is neither nbconvert nor LaTeX at fault: it is
+# nbconvert's LaTeX template. Keeping the table out of check-notebook.ipynb is what
+# lets that notebook export from JupyterLab, which is what students are told to do.
+check-notebook-table-nbconvert-latex.pdf: check-notebook-table.ipynb
+	uv run jupyter nbconvert $< --to pdf --output $(basename $@)
+
+check-notebook-table-nbconvert.html: check-notebook-table.ipynb
+	uv run jupyter nbconvert $< --to html --output $(basename $@)
+
+check-notebook-table-quarto-latex.pdf: check-notebook-table.ipynb
+	uv run quarto render $< --to pdf --output $@
+
 # --- rmarkdown: rendered by R itself -----------------------------------------
 check-rmarkdown-rmarkdown-latex.pdf: check-rmarkdown.Rmd
 	Rscript -e 'rmarkdown::render("$<", output_format = "pdf_document", output_file = "$@")'
@@ -119,6 +153,13 @@ check-notebook-nbconvert-web.pdf: check-notebook.ipynb
 	uv run jupyter nbconvert $< --to webpdf --output $(basename $@) \
 	|| uv run jupyter nbconvert $< --to webpdf --output $(basename $@)
 
+# The same export, driven through nbconvert's exporter API rather than its command
+# line. The CLI cannot do this on Windows, and this route is here to show that the
+# reason is one line in the CLI rather than anything about the platform. Read
+# ci/webpdf.py for the mechanism. Retried once for the same network reason.
+check-notebook-nbconvert-api-web.pdf: check-notebook.ipynb ci/webpdf.py
+	uv run python ci/webpdf.py $< $@ || uv run python ci/webpdf.py $< $@
+
 # ------------------------------------------------------------------ check ----
 # Rendering is not the same as rendering correctly: every LaTeX route exits 0
 # while silently dropping characters it has no glyph for. This looks inside the
@@ -131,6 +172,11 @@ matrix:  ## Print the feature-by-route table that is in the README
 
 matrix-check:  ## Check the README's table still matches the rendered files
 	uv run python ci/check-matrix-block.py
+
+# Documentation drifts silently, which is the failure this project exists to catch, so
+# the mechanical half of "keep the docs in sync" is a target rather than a promise.
+check-docs:  ## Check README.md and CLAUDE.md still describe this repository
+	uv run python ci/assert-docs.py
 
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced

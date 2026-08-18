@@ -9,61 +9,69 @@ installation. It is referenced from the MDS installation guides:
 
 ## For students
 
-Clone it into your home folder, so that the setup check script can find it
-later:
+**You do not normally clone this yourself.** Running the setup check at the end of
+your install guide downloads it into `~/mds-setup-check` for you.
+
+That script makes the folder itself and will not reuse one that is already there —
+it has no way to tell a fresh clone from last year's copy or an interrupted
+download, so measuring it would report on whatever happens to be in there rather
+than on the version everyone else is checked against.
+
+If `~/mds-setup-check` already exists, the script asks whether to delete it and
+download a fresh copy. The answer defaults to **no**, and only `y` or `yes` counts
+as agreement, because saying yes removes that folder and everything in it. Answer
+no and it leaves the folder alone, skips the Python and document export checks,
+and tells you how to delete it yourself once you have moved out anything you want
+to keep.
+
+### Working in the project directly
+
+To reproduce the render matrix below yourself, clone it anywhere *other* than
+`~/mds-setup-check` and run three commands:
 
 ```bash
-cd ~
 git clone https://github.com/UBC-MDS/mds-setup-check.git
 cd mds-setup-check
-uv sync
-```
 
-`uv sync` creates a `.venv` folder inside this project and installs the exact
-package versions recorded in `uv.lock`. Every student in the cohort therefore
-gets an identical environment.
-
-From then on, every Python command you run for this project starts with
-`uv run`:
-
-```bash
-uv run python --version
-uv run jupyter lab
-```
-
-The R packages work the same way, managed by
-[renv](https://rstudio.github.io/renv/) instead of uv. One command installs
-everything this project needs in both languages, plus the browser one of the PDF
-routes uses:
-
-```bash
 make install
-```
-
-Then render every document by every route:
-
-```bash
-make -k all
-```
-
-`-k` matters. One route is known not to work — a notebook containing a markdown
-table cannot be exported to PDF by nbconvert — and without `-k` make stops at that
-failure, so the routes after it never run at all.
-
-Then check that the results are actually correct:
-
-```bash
+make all
 make check
 ```
 
-`make check` is the verdict, not make's own exit code: it knows which failures are
-known limitations of the toolchain and which mean something is wrong with the
-install. It also refuses to certify an output that is older than the document it
-came from, so re-running it on a machine that has since broken cannot pass on last
-month's files.
+That is the whole sequence. There is nothing to run by hand and nothing to
+remember about flags:
 
-`make` on its own lists every target with a one-line description, so you do not
-have to read this file to remember them.
+- **`make install`** installs the Python packages, the R packages and the browser
+  one of the PDF routes needs. Python is managed by uv from `uv.lock` and R by
+  [renv](https://rstudio.github.io/renv/) from `renv.lock`, so every student in the
+  cohort ends up with byte-identical versions.
+- **`make all`** renders every document by every route. It keeps going past a
+  failure rather than stopping at the first one, because one route is *known* not to
+  work — `check-notebook-table.ipynb` cannot be exported to PDF by nbconvert, which
+  is the whole reason that fixture exists — and stopping there would leave every
+  later route unrendered and looking broken.
+- **`make check`** is the verdict. Rendering without an error is not the same as
+  rendering correctly: every LaTeX route here exits 0 while silently dropping
+  characters it has no glyph for, so this looks inside the finished files instead
+  of at exit codes. It knows which failures are known limitations of the toolchain
+  and which mean something is wrong with your install, and it refuses to certify an
+  output older than the document it came from — so re-running it on a machine that
+  has since broken cannot pass on last month's files.
+
+Running `make` on its own lists every target with a one-line description.
+
+These are the same commands CI runs on macOS, Ubuntu and Windows, which is the
+point of putting them in the `Makefile` rather than writing them out here: what you
+run and what is tested cannot drift apart.
+
+> Every Python command in this project goes through `uv run`, which is what puts
+> the project's own `.venv` first on `PATH`. The `Makefile` already does that for
+> you, so you only need it when running something yourself —
+> `uv run jupyter lab`, not `jupyter lab`.
+
+`make matrix-check` is a separate gate, and the one that keeps this file honest: it
+regenerates the tables below from the rendered files and fails if the committed
+block has drifted from them.
 
 ### What each document proves
 
@@ -73,6 +81,7 @@ have to read this file to remember them.
 | `check-quarto-r.qmd` | `uv run quarto render` | Quarto finds R and runs it — a different path from R Markdown |
 | `check-notebook.ipynb` | `uv run jupyter nbconvert` | the same route as JupyterLab's `File -> Save and Export Notebook As... -> PDF`, which goes through pandoc |
 | `check-notebook.ipynb` | `uv run quarto render` | the same notebook through Quarto instead — the workaround when the export menu fails |
+| `check-notebook-table.ipynb` | both of the above | isolates the one construct the export menu cannot handle, so the failure is attributable rather than just present |
 | `check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
 | `check-rmarkdown.Rmd` | `uv run quarto render` | Quarto reads `.Rmd` as well, so the same document has two routes |
 
@@ -89,11 +98,17 @@ that goes wrong often enough not to be worth meeting in week one.
 
 ### What renders where
 
-Every fixture contains the same features, so any difference below is a property of
-the toolchain rather than the document. **This is measured, not asserted** —
-`make matrix` regenerates these tables from the rendered files, and `make check`
-fails if any cell stops being true. It also fails if an output is older than the document
-it came from, so a table cannot be certified by last month's renders.
+The four full fixtures contain the same features, so any difference between them
+below is a property of the toolchain rather than the document.
+`check-notebook-table.ipynb` is the exception: it holds one construct and nothing
+else, and a dash means the fixture does not contain that feature at all, which is
+a different statement from a cross.
+
+**This is measured, not asserted** — `make matrix` regenerates these tables from
+the rendered files, `make matrix-check` fails if the committed block has drifted
+from them, and `make check` fails if a route stops containing what that route
+should contain. `make check` also fails if an output is older than the document it
+came from, so a table cannot be certified by last month's renders.
 
 **The tables show this machine.** One route differs by platform, marked below.
 
@@ -105,49 +120,62 @@ nbconvert only reads `.ipynb` and `rmarkdown` only reads `.Rmd`.
 
 **`.qmd`**
 
-| input | rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
+| input | rendered by | output | accented latin | degree sign | en dash | curly quotes | inline maths | display eqn | aligned eqns | literal Greek | emoji | middot | numbered eqn | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | `check-quarto-py.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-quarto-r.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-quarto-r.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-r.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `check-quarto-r.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | `check-quarto-r.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-**`.ipynb`** — `check-notebook.ipynb`
+**`.ipynb`**
 
-| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| nbconvert ⚠️ | LaTeX PDF | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| nbconvert | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| nbconvert | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| input | rendered by | output | accented latin | degree sign | en dash | curly quotes | inline maths | display eqn | aligned eqns | literal Greek | emoji | middot | numbered eqn | markdown table | image |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `check-notebook.ipynb` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | — | ✅ |
+| `check-notebook.ipynb` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook.ipynb` | nbconvert API | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| `check-notebook-table.ipynb` | nbconvert ⚠️ | LaTeX PDF | — | — | — | — | — | — | — | — | — | — | — | ❌ | — |
+| `check-notebook-table.ipynb` | nbconvert | HTML | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
+| `check-notebook-table.ipynb` | Quarto | LaTeX PDF | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
 
-⚠️ **nbconvert → LaTeX PDF produces no file at all.** nbconvert's LaTeX template emits \LTcaptype{none} for a markdown table, which this TeX Live rejects with "No counter 'none' defined". Any notebook containing a markdown table fails JupyterLab's PDF export for the same reason. Rendering the same notebook through Quarto works, table and all.
+⚠️ **nbconvert → LaTeX PDF produces no file at all.** nbconvert's LaTeX template emits \LTcaptype{none} for a markdown table, which this TeX Live rejects with "No counter 'none' defined". A notebook containing a markdown table fails JupyterLab's PDF export for this reason, and one without a table exports fine -- which is why the table lives in a fixture of its own. Rendering the same notebook through Quarto works, table and all.
 
 **`.Rmd`** — `check-rmarkdown.Rmd`
 
-| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
+| rendered by | output | accented latin | degree sign | en dash | curly quotes | inline maths | display eqn | aligned eqns | literal Greek | emoji | middot | numbered eqn | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| rmarkdown | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| rmarkdown | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | rmarkdown | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 <!-- end matrix -->
 
-**Windows: WebPDF does not work.** playwright drives the browser through asyncio
-subprocesses, which raise `NotImplementedError` on Windows in this Python, so that row is
-✅ here and would be ❌ on a Windows machine. The same notebook exports fine on macOS and
-Linux. `make check` knows this and does not fail the Windows run over it.
+**Windows: `nbconvert → WebPDF` does not work**, so that row is ✅ here and would be
+❌ on a Windows machine. `make check` knows this and does not fail the Windows run
+over it.
 
-The input format matters as much as the output one. `check-notebook.ipynb` to a
-LaTeX PDF is the only route of the seventeen that fails outright, and the same
-output format from the same notebook through Quarto is fine — so that failure is a
-property of nbconvert, not of PDFs and not of notebooks.
+It is worth knowing *why*, because it is neither Windows nor playwright. nbconvert's
+command-line application sets `WindowsSelectorEventLoopPolicy` for tornado and pyzmq,
+and its own WebPDF exporter then runs playwright under that policy — and a
+`SelectorEventLoop` is the one Windows event loop that cannot start a subprocess, so
+launching Chromium raises `NotImplementedError`. The **`nbconvert API`** row beside it
+is the same exporter called directly, bypassing that one line, and it is green on
+Windows. Students still cannot use WebPDF there, because JupyterLab's export menu goes
+through `jupyter_server`, which sets the same policy — but the row means the cause is
+attributable, and it will turn green the day upstream fixes it.
+
+The input format matters as much as the output one. `check-notebook-table.ipynb` to a
+LaTeX PDF via nbconvert is the only route of the twenty-one that fails outright, and
+the same output format from the same notebook through Quarto is fine — so that failure
+is a property of nbconvert's LaTeX template, not of PDFs and not of notebooks.
 
 **Use this table when something looks wrong in an assignment.** If a character is
 missing and the table says **no** for that route, it is a known limitation of the
@@ -160,10 +188,12 @@ Three things are worth knowing before writing an assignment:
   as maths — `$\alpha$` rather than `α` — works in every route, and is the right
   spelling in a statistics program anyway. Emoji have no portable form, so a
   document that needs them wants Typst or HTML — or WebPDF, on a Mac or on Linux.
-- **Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`.** A bare
-  `\begin{align}` is a raw LaTeX environment that pandoc passes through
-  untranslated, so Typst never sees any maths and renders nothing — silently.
-  Inside `$$` every route handles it.
+- **Write equations as `$$…$$`, and multi-line ones as
+  `$$\begin{aligned}…\end{aligned}$$`.** A bare `\begin{align}` or
+  `\begin{equation}` is a raw LaTeX environment that pandoc passes through
+  untranslated, so Typst never sees any maths and renders nothing — silently. That is
+  the `numbered eqn` ❌ on every Typst row above: the fixtures write that one the
+  failing way on purpose. Inside `$$` every route handles it.
 - **A notebook containing a markdown table cannot be exported to PDF from
   JupyterLab.** nbconvert's template writes `\LTcaptype{none}`, which this TeX Live
   rejects. Rendering the same notebook through Quarto works, table and all, so the
@@ -171,8 +201,8 @@ Three things are worth knowing before writing an assignment:
 
 `make clean` deletes everything the renders produced.
 
-**Keep this folder until you have submitted your setup check log.** The
-`check-setup-mds.sh` script looks for it at `~/mds-setup-check`.
+You can delete `~/mds-setup-check` once you have submitted your log. The script
+does not look for it — it creates it — so the next run makes it again.
 
 ## What is in here
 
@@ -184,14 +214,20 @@ Three things are worth knowing before writing an assignment:
 | `renv.lock` | the same idea for R packages |
 | `.Rprofile`, `renv/` | how R finds this project's own package library |
 | `Makefile` | installs, renders and checks; run `make` to list its targets |
+| [`CLAUDE.md`](CLAUDE.md) | context for an AI agent working here: the invariants, and what makes a check real |
 | `check-quarto-py.qmd` | Quarto fixture, Python |
 | `check-quarto-r.qmd` | Quarto fixture, R |
 | `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
+| `check-notebook-table.ipynb` | one markdown table and nothing else: the single construct JupyterLab's PDF export cannot handle |
 | `check-rmarkdown.Rmd` | R Markdown fixture |
 | `ci/assert-renders.py` | checks the rendered files contain what they should, per route |
 | `ci/assert-contract.py` | checks this repo still matches what `assignment-workflow-uv.md` describes |
+| `ci/assert-docs.py` | checks every make target, fixture and script named in `README.md` and `CLAUDE.md` exists |
 | `ci/feature-matrix.py` | measures which features survive which route, and prints the tables above |
 | `ci/check-matrix-block.py` | fails if those tables have drifted from the rendered files |
+| `ci/run-setup-check.py` | attaches a terminal to `check-setup-mds.sh` so CI can answer its prompts |
+| `ci/webpdf.py` | exports a notebook through the browser without nbconvert's command line, which is what breaks that route on Windows |
+| `.github/workflows/assignment-workflow.yml` | the CI described under **For instructors** below |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
 | `mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
 | [`using-atkinson-hyperlegible.md`](using-atkinson-hyperlegible.md) | optional: how to set a document in the Atkinson Hyperlegible typeface |
@@ -216,6 +252,54 @@ This project doubles as the reference shape for an MDS assignment repo.
 [assignment-workflow-uv.md](assignment-workflow-uv.md) covers what a course repo
 must declare, why `uv.lock` is committed, how PDFs get produced, and the failure
 modes students will report.
+
+### How this is tested, and what a green build does not prove
+
+[`.github/workflows/assignment-workflow.yml`](.github/workflows/assignment-workflow.yml)
+runs on every push, every pull request, and every Monday — the schedule matters
+because this repository can sit unchanged for months while everything that breaks
+it moves upstream. It renders every route on macOS, Ubuntu and Windows, checks the
+content of what came out, and runs `check-setup-mds.sh` end to end the way a
+student does.
+
+A green badge is a narrower claim than it looks. **Read this list before treating
+CI as evidence that the install guides work.**
+
+- **The student script is executed on Ubuntu only.** Its macOS branch (`mdls` for
+  RStudio, the `/Library/PostgreSQL` scan, bash 3.2 patterns) and its Windows
+  branch (`tlmgr.bat`, `reg query`, `$LOCALAPPDATA`) have no execution coverage at
+  all. Those two branches are also where most of its platform-specific code lives.
+- **Nothing asserts on a `MISSING` line.** The end-to-end step runs to completion
+  regardless, and the check that follows greps for four specific strings. Every
+  version pattern in the script could be wrong and CI would still be green.
+- **The version patterns are substring tests, not version tests.** `R=4.*` accepts
+  `R version 5.0.0 (2027-04-20)` — it matches the `04` in the date. `latex=3.*`
+  cannot fail at all, because pdfTeX's version string is π. See
+  [#7](https://github.com/UBC-MDS/mds-setup-check/issues/7).
+- **The R packages the guides tell students to install are installed by nothing
+  here.** `tidyverse`, `janitor`, `gapminder`, `readxl`, `usethis`, `devtools`,
+  `languageserver`, and — most fragile — `ottr` and `canlang`, which install from
+  git HEAD and can break with nobody touching anything. `renv.lock` answers a
+  different question (see below) and shares three packages with that list.
+- **Several programs are never installed on a runner**, so their checks are
+  exercised nowhere: Positron, RStudio, PostgreSQL, Docker, XQuartz and Rtools.
+- **The Python packages section of the log cannot fail for anything a student
+  did.** The script clones this repository, runs `uv sync` against the committed
+  `uv.lock`, and then reports the versions it just installed. What it genuinely
+  proves is that `uv` works and the network was reachable.
+- **TinyTeX is installed by a GitHub action, not by the route the guides give
+  students.** The guides use `tinytex::install_tinytex()` followed by a logout, and
+  it is precisely that PATH step they warn about — which is therefore verified on
+  no platform. The 22-package `tlmgr` list *is* checked, and does match the guides.
+- **`check-python-installs.sh` is fetched from the live site at run time**, so a
+  pull request testing the end-to-end script is testing the *published* copy of
+  that half, not the branch's.
+
+The route-level limitations are a different matter and are kept honest
+mechanically: they live in `KNOWN_TO_FAIL` in
+[`ci/assert-renders.py`](ci/assert-renders.py), the footnotes under the tables above
+are generated from that same list, and a route that starts working fails the build
+rather than being silently absorbed.
 
 Three things here are deliberate and should be preserved if this file is copied:
 

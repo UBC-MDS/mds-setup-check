@@ -18,7 +18,11 @@ import os, pty, re, select, sys
 
 # (what to wait for, what to answer, why)
 ANSWERS = [
-    (re.compile(r"Set up the MDS check project now\?"), b"y\n",
+    # Either form of the first question. A runner with no ~/mds-setup-check is asked
+    # to create it; one that already has the folder -- a warm or self-hosted runner --
+    # is asked whether to replace it instead, and the two are alternatives rather than
+    # both appearing. Matching only the first would stall here until the timeout.
+    (re.compile(r"Set up the MDS check project now\?|and download a fresh copy\?"), b"y\n",
      "yes: the point of the run is to exercise the checks that need the project"),
     (re.compile(r"Include environment variables in the log\?"), b"n\n",
      "no: the default, and the answer students are told to give"),

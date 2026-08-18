@@ -92,6 +92,13 @@ jobs:
       - name: Check the pyproject contract
         run: uv run python ci/assert-contract.py
 
+      # Reads files rather than rendering anything, so one platform is enough.
+      # Catches a fixture or target renamed in the code and not in the prose, which
+      # is how a rename reached everything except the script students run.
+      - name: Check the docs still describe the repo
+        if: matrix.os == 'ubuntu-latest'
+        run: make check-docs
+
       # JupyterLab is installed but never started. What is worth asserting is that
       # the server extensions resolve, which is the claim that justifies jupyterlab
       # being a real dependency rather than a dev one.
@@ -109,6 +116,10 @@ jobs:
           fi
 
       # ------------------------------------------------------------- renders ---
+      # `render` rather than `all`, because `all` is the student-facing target and
+      # already wraps this in -k and swallows the exit code. Calling the inner target
+      # keeps the two flags visible here, where the reasoning for them lives.
+      #
       # -k so that one broken route does not hide the others: which routes work is
       # the information this job exists to produce.
       #
@@ -118,7 +129,7 @@ jobs:
       # it knows which failures are known limitations and which are not. Letting
       # make fail the job here would mean encoding that list in two places.
       - name: Render every route
-        run: make -k all || true
+        run: make -k render || true
 
       - name: Show which outputs were produced
         run: ls -la check-*.pdf check-*.html || true

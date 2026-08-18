@@ -111,6 +111,22 @@ universal — one lock covers macOS, Linux and Windows.
 
 `uv init` writes this for you. `uv init --bare` does not, so check.
 
+### `.gitattributes`, if the repo contains a `Makefile` or any `.sh`
+
+```
+*.sh     text eol=lf
+Makefile text eol=lf
+*.py     text eol=lf
+```
+
+The Windows install guide has students configure git with "checkout Windows-style,
+commit Unix-style", so without this every shell script and `Makefile` arrives on a
+Windows machine with CRLF line endings. `bash` then fails on the shebang with
+`$'\r': command not found`, and GNU make appends a carriage return to every
+argument in a recipe. Neither error mentions line endings, both are baffling, and
+they get reported as "the repo is broken". Section 6 recommends a `Makefile` for
+every assignment repo, which is exactly the file this protects.
+
 ### Python version
 
 `requires-python` in `pyproject.toml`, and optionally a `.python-version` file,
@@ -180,6 +196,17 @@ formats — `.qmd`, `.ipynb` and `.Rmd` — so it can stand in for either of the
 | `Rscript -e 'rmarkdown::render("f.Rmd")'` | xelatex, via knitr | An `.Rmd` rendered by R itself |
 | JupyterLab `File > Save and Export Notebook As... > PDF` | xelatex, via nbconvert | Familiar in-Lab route, but see the markdown-table limitation below |
 | JupyterLab `... > WebPDF` | headless Chromium | No LaTeX at all; also handles emoji. **Not available on Windows** |
+
+**Why WebPDF is unavailable on Windows**, since it comes up every year and the error
+is unreadable. It is not a Windows limitation and not a playwright bug. nbconvert's
+own command-line application sets `WindowsSelectorEventLoopPolicy` on Windows (for
+tornado and pyzmq), and its WebPDF exporter then runs playwright under that policy.
+A `SelectorEventLoop` cannot start a subprocess, so launching Chromium raises
+`NotImplementedError` from deep inside asyncio. `jupyter_server` sets the same
+policy, which is why the Lab export menu fails the same way. Calling the exporter
+directly does work on Windows -- `mds-setup-check` carries `ci/webpdf.py` to prove
+it -- but there is no way for a student to reach that from the Lab menu, so tell
+them to use Typst.
 
 **LaTeX cannot typeset emoji or literal Greek letters, and does not say so.** This
 is the one to know before writing an assignment. Every LaTeX route above replaces
@@ -277,6 +304,24 @@ clean:
 It also documents the exact commands, which is more useful than prose when a
 student is stuck.
 
+**If a repo renders one source by more than one route, name the outputs apart.**
+Quarto compiles to an intermediate named after the *input* and then moves it to
+`--output`, and it treats `--to pdf` and `--to typst` as the same output for a
+given input. Two targets over one source therefore overwrite each other, with no
+error and no warning — the second render simply deletes the first file. Either set
+`output-file:` per format in the document's YAML:
+
+```yaml
+format:
+  pdf:   { output-file: report-latex.pdf }
+  typst: { output-file: report-typst.pdf }
+```
+
+or pass `--output report-typst.pdf`. `mds-setup-check` names every output
+`<document>-<tool>-<format>` for this reason, and found the problem the hard way:
+a route reported as missing had in fact rendered fine and been eaten by the next
+one.
+
 ---
 
 ## 7. Autograding and Docker
@@ -369,8 +414,8 @@ error from uv itself.
   cd <hw-repo>
   uv sync
   # IRkernel itself is installed nowhere by the MDS setup, so it comes first
-  uv run R -e 'install.packages("IRkernel", repos = "https://packagemanager.posit.co/cran/latest")'
-  uv run R -e "IRkernel::installspec()"
+  R -e 'install.packages("IRkernel", repos = "https://packagemanager.posit.co/cran/latest")'
+  R -e "IRkernel::installspec()"
   ```
 
   Note that `installspec()` writes a **user-level** kernelspec, so although it is

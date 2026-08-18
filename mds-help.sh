@@ -144,6 +144,9 @@ run python <FILE>           Run a Python script
 run python                  Start a Python prompt
 run jupyter lab             Start JupyterLab
 run jupyter nbconvert <FILE> --to pdf   Turn a notebook into a PDF
+run quarto render <FILE> --to pdf       The same, but it can handle a notebook
+                                        containing a markdown table, which
+                                        nbconvert cannot
 run quarto render <FILE> --to pdf       Turn a Quarto document into a PDF
 run pytest                  Run the tests
 
@@ -183,6 +186,15 @@ gl -N  Show 'N' lines instead of the default 10
 gt     'git status'
 gm     'git commit -m'
 gap    'git add -p'
+
+The install guides also redefine five commands you already know, so that they say
+what they did and ask before destroying anything:
+
+grep   'grep -i' -- searches WITHOUT regard to upper or lower case
+rm     asks before removing, and lists what it removed
+mv     'mv -vi' -- asks before overwriting, and says what it moved
+cp     'cp -vi' -- asks before overwriting, and says what it copied
+mkdir  'mkdir -vp' -- creates parent folders too, and says what it made
 "
 
 # Handle subcommands to only output single sections
