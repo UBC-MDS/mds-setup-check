@@ -14,10 +14,15 @@ your install guide downloads it into `~/mds-setup-check` for you.
 
 That script makes the folder itself and will not reuse one that is already there —
 it has no way to tell a fresh clone from last year's copy or an interrupted
-download, so rather than measure something it did not create, it skips the Python
-package and document export checks entirely. **Cloning into `~/mds-setup-check`
-by hand is therefore the one thing that stops the setup check working.** If you
-already have that folder, delete it and re-run the script.
+download, so measuring it would report on whatever happens to be in there rather
+than on the version everyone else is checked against.
+
+If `~/mds-setup-check` already exists, the script asks whether to delete it and
+download a fresh copy. The answer defaults to **no**, and only `y` or `yes` counts
+as agreement, because saying yes removes that folder and everything in it. Answer
+no and it leaves the folder alone, skips the Python and document export checks,
+and tells you how to delete it yourself once you have moved out anything you want
+to keep.
 
 To work in the project directly — to reproduce the render matrix below, say —
 clone it anywhere *other* than `~/mds-setup-check`:

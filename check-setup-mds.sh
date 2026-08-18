@@ -321,11 +321,45 @@ confirm_project_setup() {
 
 # A folder that was already there is never adopted. It could be last year's copy, an
 # interrupted clone, or an unrelated folder that happens to share the name, and any of
-# those would be measured and reported as though this script had made it. Deleting
-# somebody's folder is not this script's call either, so the run stops and says what to do.
-# Starting over is cheap: the clone is small and uv reinstalls the packages from its cache.
+# those would be measured and reported as though this script had made it. Starting over
+# is cheap: the clone is small and uv reinstalls the packages from its cache.
 mds_project_preexisting=''
 [ -e "$mds_project" ] && mds_project_preexisting='yes'
+
+# Deleting it is the student's call, so it is asked as its own question with its own
+# default of no. Kept separate from the setup prompt above deliberately: agreeing to
+# download a project is not the same as agreeing to lose whatever is in that folder.
+confirm_project_replace() {
+    [ -t 0 ] || return 1
+    echo
+    echo "$mds_project already exists, and this script cannot check a folder it did not"
+    echo 'make -- it has no way to tell a fresh copy from last year, an interrupted'
+    echo 'download, or something unrelated that happens to share the name.'
+    echo
+    echo "Deleting it removes that folder AND EVERYTHING IN IT. If you have saved any"
+    echo 'work of your own in there, answer no and move it somewhere else first.'
+    read -r -p "Delete $mds_project and download a fresh copy? [y/N] " replace_input
+    # Same shape as every other prompt here: lower-cased so y/Y/yes/YES all count, and
+    # anything else at all -- including a bare Enter -- leaves the answer at no.
+    replace_input=$(printf '%s' "$replace_input" | tr '[:upper:]' '[:lower:]')
+    case "$replace_input" in y | yes) ;; *) return 1 ;; esac
+
+    # Belt and braces before an rm -rf built from a variable: it has to be a real
+    # directory, and it has to be the path this script computed rather than $HOME or /.
+    if [ -z "$mds_project" ] || [ "$mds_project" != "$HOME/mds-setup-check" ] \
+       || [ ! -d "$mds_project" ]; then
+        echo "Refusing to delete '$mds_project': that is not the folder this script makes."
+        return 1
+    fi
+    echo "Deleting $mds_project ..."
+    rm -rf "$mds_project" || return 1
+    mds_project_preexisting=''
+    # "and download a fresh copy" was in the question, so consent to the download has
+    # already been given. Without this the student is asked whether to set the project
+    # up immediately after agreeing to set the project up.
+    mds_setup_reply='yes'
+    return 0
+}
 
 # Clones the project, installs its packages, and downloads the chromium that JupyterLab
 # exports PDFs through. Each step prints its own progress: together they are by far the
@@ -333,15 +367,14 @@ mds_project_preexisting=''
 # Failures are left for the checks below to report, so that a student who cannot download
 # still gets the rest of their log.
 setup_mds_project() {
-    if [ -n "$mds_project_preexisting" ]; then
+    if [ -n "$mds_project_preexisting" ] && ! confirm_project_replace; then
         # Said here as well as in the log, because this is the moment the student is
         # watching the terminal, and it is the one outcome they have to act on themselves.
         if [ -t 0 ]; then
             echo
-            echo "$mds_project already exists, so the Python checks were skipped."
-            echo 'This script needs to make that folder itself. Please delete it with'
+            echo "Leaving $mds_project alone, so the Python checks were skipped."
+            echo 'To run them, delete that folder yourself and run this script again:'
             echo "    rm -rf $mds_project"
-            echo 'and run this script again.'
         fi
         return
     fi
@@ -371,11 +404,21 @@ if ! [ -x "$(command -v uv)" ]; then  # Check that uv exists as an executable pr
     echo "Please install 'uv' to check Python package versions." >> check-setup-mds.log
     echo "See the 'Python and uv' section of the installation instructions." >> check-setup-mds.log
 elif [ -n "$mds_project_preexisting" ]; then
+    # Still set means the offer to replace the folder was declined, or was never made
+    # because there was no terminal to make it on. confirm_project_replace clears it
+    # after a successful delete, so a student who accepted does not land here.
     echo "$mds_project was already on this computer before the script ran," >> check-setup-mds.log
     echo "so the Python package and document conversion checks were skipped." >> check-setup-mds.log
     echo "This script needs to make that folder itself, otherwise it reports on whatever" >> check-setup-mds.log
     echo "happens to be in there rather than on the version everyone else is checked against." >> check-setup-mds.log
-    echo "Delete it and run this script again:" >> check-setup-mds.log
+    if [ -t 0 ]; then
+        echo "You were offered the chance to replace it and chose not to. To run these" >> check-setup-mds.log
+        echo "checks, move anything you want to keep out of that folder, then delete it" >> check-setup-mds.log
+        echo "and run this script again:" >> check-setup-mds.log
+    else
+        echo "This script had no terminal attached, so it could not ask whether to replace" >> check-setup-mds.log
+        echo "it. Delete it and run this script again from a terminal:" >> check-setup-mds.log
+    fi
     echo "    rm -rf $mds_project" >> check-setup-mds.log
 elif ! [ -f "$mds_project/pyproject.toml" ] || ! [ -d "$mds_project/.venv" ]; then
     echo "The MDS check project at $mds_project is not set up," >> check-setup-mds.log
