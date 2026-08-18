@@ -2,7 +2,12 @@
 #
 #   make install   install everything this project needs, in both languages
 #   make all       render every document by every route
+#   make check     say whether the results are actually correct
 #   make clean     delete everything the renders produced
+#
+# Those are the three commands, in that order. Everything a student needs to run
+# lives in this file rather than in the README, so that what they run and what CI
+# runs cannot drift apart.
 #
 # There are four output routes, and they do not all handle the same characters:
 #
@@ -21,7 +26,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all install clean check matrix matrix-check pdf typst html webpdf
+.PHONY: commands all render install clean check matrix matrix-check pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -41,7 +46,19 @@ install:  ## Install the Python and R packages, and the browser for webpdf
 	Rscript -e 'renv::restore(prompt = FALSE)'
 
 # -------------------------------------------------------------------- all ----
-all: pdf typst html webpdf  ## Render every document by every route
+# A recipe rather than a list of prerequisites, so that the keep-going flag is part
+# of the target instead of something the student has to remember. One route is known
+# not to work -- check-notebook-table.ipynb cannot be exported to PDF by nbconvert --
+# and a bare `make` would stop there, leaving every later route unrendered and
+# looking broken. The exit code is ignored for the same reason: `make check` is the
+# verdict, and it is the only thing that knows which failures are expected.
+all:  ## Render every document by every route
+	@$(MAKE) -k render || true
+	@echo
+	@echo 'Rendering finished. Now run `make check` to find out whether the results'
+	@echo 'are correct -- rendering without errors is not the same as rendering right.'
+
+render: pdf typst html webpdf  ## Render, without the keep-going wrapper (used by CI)
 
 # Every output name carries the tool that produced it. That is not only for
 # reading the table: Quarto compiles `check-rmarkdown.Rmd` to an intermediate

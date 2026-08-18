@@ -24,65 +24,54 @@ no and it leaves the folder alone, skips the Python and document export checks,
 and tells you how to delete it yourself once you have moved out anything you want
 to keep.
 
-To work in the project directly — to reproduce the render matrix below, say —
-clone it anywhere *other* than `~/mds-setup-check`:
+### Working in the project directly
+
+To reproduce the render matrix below yourself, clone it anywhere *other* than
+`~/mds-setup-check` and run three commands:
 
 ```bash
 git clone https://github.com/UBC-MDS/mds-setup-check.git
 cd mds-setup-check
-uv sync
-```
 
-`uv sync` creates a `.venv` folder inside this project and installs the exact
-package versions recorded in `uv.lock`. Every student in the cohort therefore
-gets an identical environment.
-
-From then on, every Python command you run for this project starts with
-`uv run`:
-
-```bash
-uv run python --version
-uv run jupyter lab
-```
-
-The R packages work the same way, managed by
-[renv](https://rstudio.github.io/renv/) instead of uv. One command installs
-everything this project needs in both languages, plus the browser one of the PDF
-routes uses:
-
-```bash
 make install
-```
-
-Then render every document by every route:
-
-```bash
-make -k all
-```
-
-`-k` matters. One route is known not to work — `check-notebook-table.ipynb` cannot
-be exported to PDF by nbconvert, which is the whole reason that fixture exists —
-and without `-k` make stops at that failure, so the routes after it never run at
-all.
-
-Then check that the results are actually correct:
-
-```bash
+make all
 make check
 ```
 
-`make check` is the verdict, not make's own exit code: it knows which failures are
-known limitations of the toolchain and which mean something is wrong with the
-install. It also refuses to certify an output that is older than the document it
-came from, so re-running it on a machine that has since broken cannot pass on last
-month's files.
+That is the whole sequence. There is nothing to run by hand and nothing to
+remember about flags:
+
+- **`make install`** installs the Python packages, the R packages and the browser
+  one of the PDF routes needs. Python is managed by uv from `uv.lock` and R by
+  [renv](https://rstudio.github.io/renv/) from `renv.lock`, so every student in the
+  cohort ends up with byte-identical versions.
+- **`make all`** renders every document by every route. It keeps going past a
+  failure rather than stopping at the first one, because one route is *known* not to
+  work — `check-notebook-table.ipynb` cannot be exported to PDF by nbconvert, which
+  is the whole reason that fixture exists — and stopping there would leave every
+  later route unrendered and looking broken.
+- **`make check`** is the verdict. Rendering without an error is not the same as
+  rendering correctly: every LaTeX route here exits 0 while silently dropping
+  characters it has no glyph for, so this looks inside the finished files instead
+  of at exit codes. It knows which failures are known limitations of the toolchain
+  and which mean something is wrong with your install, and it refuses to certify an
+  output older than the document it came from — so re-running it on a machine that
+  has since broken cannot pass on last month's files.
+
+Running `make` on its own lists every target with a one-line description.
+
+These are the same commands CI runs on macOS, Ubuntu and Windows, which is the
+point of putting them in the `Makefile` rather than writing them out here: what you
+run and what is tested cannot drift apart.
+
+> Every Python command in this project goes through `uv run`, which is what puts
+> the project's own `.venv` first on `PATH`. The `Makefile` already does that for
+> you, so you only need it when running something yourself —
+> `uv run jupyter lab`, not `jupyter lab`.
 
 `make matrix-check` is a separate gate, and the one that keeps this file honest: it
 regenerates the tables below from the rendered files and fails if the committed
 block has drifted from them.
-
-`make` on its own lists every target with a one-line description, so you do not
-have to read this file to remember them.
 
 ### What each document proves
 

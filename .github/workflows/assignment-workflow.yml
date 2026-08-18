@@ -109,6 +109,10 @@ jobs:
           fi
 
       # ------------------------------------------------------------- renders ---
+      # `render` rather than `all`, because `all` is the student-facing target and
+      # already wraps this in -k and swallows the exit code. Calling the inner target
+      # keeps the two flags visible here, where the reasoning for them lives.
+      #
       # -k so that one broken route does not hide the others: which routes work is
       # the information this job exists to produce.
       #
@@ -118,7 +122,7 @@ jobs:
       # it knows which failures are known limitations and which are not. Letting
       # make fail the job here would mean encoding that list in two places.
       - name: Render every route
-        run: make -k all || true
+        run: make -k render || true
 
       - name: Show which outputs were produced
         run: ls -la check-*.pdf check-*.html || true
