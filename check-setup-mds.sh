@@ -148,7 +148,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
 
     # Remove rstudio and psql from the programs to be tested using the normal --version test
     sys_progs=(R=4.* uv="0\.[0-9]+\.[0-9]+" bash=3.* git=2.* make=3.* latex=3.* tlmgr=revision.* \
-        docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^| )(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
+        docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
 # psql and Rstudio are not on PATH in windows
 elif [[ "$OSTYPE" == 'msys' ]]; then
 
@@ -187,11 +187,11 @@ elif [[ "$OSTYPE" == 'msys' ]]; then
     fi
     # Remove rstudio from the programs to be tested using the normal --version test
     sys_progs=(R=4.* uv="0\.[0-9]+\.[0-9]+" bash=5.* git=2.* make=4.* latex=3.* \
-        docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^| )(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
+        docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
 else
     # For Linux everything is sane and consistent so all packages can be tested the same way
     sys_progs=(psql="(16|17|18).*" rstudio="2026\..*" R=4.* uv="0\.[0-9]+\.[0-9]+" bash=5.* \
-        git=2.* make=4.* latex=3.* tlmgr=revision.* docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^| )(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
+        git=2.* make=4.* latex=3.* tlmgr=revision.* docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
     # Note that a single equal sign is used throughout for `<name>=<version regex>`,
     # for system programs, Python packages and R packages alike.
     # There is deliberately no bare `python` here: MDS installs Python per project
@@ -199,7 +199,7 @@ else
     # `mds-setup-check` project instead.
 fi
 
-for sys_prog in ${sys_progs[@]}; do
+for sys_prog in "${sys_progs[@]}"; do
     sys_prog_no_version=$(sed "s/=.*//" <<< "$sys_prog")
     regex_version=$(sed "s/.*=//" <<< "$sys_prog")
     # Check if the command exists and is is executable
