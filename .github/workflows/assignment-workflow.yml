@@ -43,6 +43,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Recorded rather than assumed. check-setup-mds.sh decides whether a machine is
+      # Windows from these, and it got that wrong once because Git Bash changed which
+      # triplet its bash reports. Three lines here means the next such change shows up
+      # in every job log instead of in a student's screenshot.
+      - name: What shell is this
+        run: |
+          echo "uname -s : $(uname -s)"
+          echo "OSTYPE   : $OSTYPE"
+          bash --version | head -1
+
       # ---------------------------------------------------------------- tools --
       - uses: astral-sh/setup-uv@v5
         with:
