@@ -26,7 +26,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all render install clean check matrix matrix-check pdf typst html webpdf
+.PHONY: commands all render install clean check check-docs matrix matrix-check pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -172,6 +172,11 @@ matrix:  ## Print the feature-by-route table that is in the README
 
 matrix-check:  ## Check the README's table still matches the rendered files
 	uv run python ci/check-matrix-block.py
+
+# Documentation drifts silently, which is the failure this project exists to catch, so
+# the mechanical half of "keep the docs in sync" is a target rather than a promise.
+check-docs:  ## Check README.md and CLAUDE.md still describe this repository
+	uv run python ci/assert-docs.py
 
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced

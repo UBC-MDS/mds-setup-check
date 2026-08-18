@@ -214,6 +214,7 @@ does not look for it — it creates it — so the next run makes it again.
 | `renv.lock` | the same idea for R packages |
 | `.Rprofile`, `renv/` | how R finds this project's own package library |
 | `Makefile` | installs, renders and checks; run `make` to list its targets |
+| [`CLAUDE.md`](CLAUDE.md) | context for an AI agent working here: the invariants, and what makes a check real |
 | `check-quarto-py.qmd` | Quarto fixture, Python |
 | `check-quarto-r.qmd` | Quarto fixture, R |
 | `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
@@ -221,6 +222,7 @@ does not look for it — it creates it — so the next run makes it again.
 | `check-rmarkdown.Rmd` | R Markdown fixture |
 | `ci/assert-renders.py` | checks the rendered files contain what they should, per route |
 | `ci/assert-contract.py` | checks this repo still matches what `assignment-workflow-uv.md` describes |
+| `ci/assert-docs.py` | checks every make target, fixture and script named in `README.md` and `CLAUDE.md` exists |
 | `ci/feature-matrix.py` | measures which features survive which route, and prints the tables above |
 | `ci/check-matrix-block.py` | fails if those tables have drifted from the rendered files |
 | `ci/run-setup-check.py` | attaches a terminal to `check-setup-mds.sh` so CI can answer its prompts |
