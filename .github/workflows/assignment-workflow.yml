@@ -121,6 +121,15 @@ jobs:
       - name: Check the rendered documents contain what they should
         run: make check
 
+      # Into the job summary rather than the log: it is a markdown table, and an
+      # instructor comparing what survives on Windows against what survives on
+      # macOS should not have to open three logs to do it.
+      - name: Publish the feature matrix for this platform
+        if: always()
+        run: |
+          echo "## What rendered on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          make matrix >> "$GITHUB_STEP_SUMMARY" || true
+
       - name: Upload the rendered documents
         if: always()
         uses: actions/upload-artifact@v4

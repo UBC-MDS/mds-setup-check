@@ -39,12 +39,12 @@ FULL = "full"     # HTML and the browser route: everything
 # applies to. A route that fails somewhere it is not expected to still fails the
 # check, and a route that starts working anywhere is reported too.
 KNOWN_TO_FAIL = {
-    "check-notebook-web.pdf": (
+    "check-notebook-nbconvert-web.pdf": (
         {"win32"},
         "playwright drives the browser through asyncio subprocesses, which raise "
         "NotImplementedError on Windows in this Python. WebPDF export therefore "
         "does not work there; the same notebook exports fine on macOS and Linux."),
-    "check-notebook.pdf":
+    "check-notebook-nbconvert-latex.pdf":
         "nbconvert's LaTeX template emits \\LTcaptype{none} for a markdown table, "
         "which this TeX Live rejects with \"No counter 'none' defined\". Any notebook "
         "containing a markdown table fails JupyterLab's PDF export for the same "
@@ -62,17 +62,23 @@ def is_known(name: str) -> bool:
     return platforms is None or sys.platform in platforms
 
 ROUTES = {
-    "check-quarto-latex.pdf":  ("Quarto -> LaTeX",      LATEX),
-    "check-notebook.pdf":      ("nbconvert -> LaTeX",   LATEX),
-    "check-rmarkdown.pdf":     ("rmarkdown -> LaTeX",   LATEX),
-    "check-quarto-typst.pdf":  ("Quarto -> Typst",      TYPST),
-    "check-quarto-r-latex.pdf": ("Quarto R -> LaTeX",   LATEX),
-    "check-quarto-r-typst.pdf": ("Quarto R -> Typst",   TYPST),
-    "check-quarto-r.html":     ("Quarto R -> HTML",     FULL),
-    "check-notebook-web.pdf":  ("nbconvert -> Chromium", FULL),
-    "check-quarto.html":       ("Quarto -> HTML",       FULL),
-    "check-notebook.html":     ("nbconvert -> HTML",    FULL),
-    "check-rmarkdown.html":    ("rmarkdown -> HTML",    FULL),
+    "check-quarto-py-latex.pdf":        ("qmd/py  -> Quarto -> LaTeX",  LATEX),
+    "check-quarto-py-typst.pdf":        ("qmd/py  -> Quarto -> Typst",  TYPST),
+    "check-quarto-py.html":             ("qmd/py  -> Quarto -> HTML",   FULL),
+    "check-quarto-r-latex.pdf":         ("qmd/R   -> Quarto -> LaTeX",  LATEX),
+    "check-quarto-r-typst.pdf":         ("qmd/R   -> Quarto -> Typst",  TYPST),
+    "check-quarto-r.html":              ("qmd/R   -> Quarto -> HTML",   FULL),
+    "check-notebook-quarto-latex.pdf":  ("ipynb   -> Quarto -> LaTeX",  LATEX),
+    "check-notebook-quarto-typst.pdf":  ("ipynb   -> Quarto -> Typst",  TYPST),
+    "check-notebook-quarto.html":       ("ipynb   -> Quarto -> HTML",   FULL),
+    "check-notebook-nbconvert-latex.pdf":               ("ipynb   -> nbconvert -> LaTeX", LATEX),
+    "check-notebook-nbconvert.html":              ("ipynb   -> nbconvert -> HTML",  FULL),
+    "check-notebook-nbconvert-web.pdf":           ("ipynb   -> nbconvert -> WebPDF", FULL),
+    "check-rmarkdown-quarto-latex.pdf": ("Rmd     -> Quarto -> LaTeX",  LATEX),
+    "check-rmarkdown-quarto-typst.pdf": ("Rmd     -> Quarto -> Typst",  TYPST),
+    "check-rmarkdown-quarto.html":      ("Rmd     -> Quarto -> HTML",   FULL),
+    "check-rmarkdown-rmarkdown-latex.pdf":              ("Rmd     -> rmarkdown -> LaTeX", LATEX),
+    "check-rmarkdown-rmarkdown.html":             ("Rmd     -> rmarkdown -> HTML",  FULL),
 }
 
 # (label, needles, supported-by). A check passes if ANY needle is present, which

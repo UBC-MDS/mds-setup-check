@@ -7,36 +7,54 @@ behaviour -- which is the failure this repository exists to catch.
 
 Run `make all` first, then `python ci/feature-matrix.py`.
 """
-import pathlib, re, html, sys
+import pathlib, re, html, sys, importlib.util
 
-# (input file, what renders it, output format, produced file). The input matters:
-# the same output format behaves differently depending on which toolchain made it,
-# which a table of features against output format alone would hide.
+# The reasons a route is known to fail live in assert-renders.py, which is what
+# gates CI. Importing them keeps the table's footnotes and the gate's verdict
+# from ever disagreeing.
+_spec = importlib.util.spec_from_file_location(
+    "assert_renders", pathlib.Path(__file__).with_name("assert-renders.py"))
+_ar = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_ar)
+KNOWN_TO_FAIL = _ar.KNOWN_TO_FAIL
+
 ROUTES = [
-    ("check-quarto.qmd",     "Quarto",    "LaTeX PDF", "check-quarto-latex.pdf"),
-    ("check-quarto.qmd",     "Quarto",    "Typst PDF", "check-quarto-typst.pdf"),
-    ("check-quarto.qmd",     "Quarto",    "HTML",      "check-quarto.html"),
+    # (input, rendered by, output, produced file)
+    ("check-quarto-py.qmd",  "Quarto",    "LaTeX PDF", "check-quarto-py-latex.pdf"),
+    ("check-quarto-py.qmd",  "Quarto",    "Typst PDF", "check-quarto-py-typst.pdf"),
+    ("check-quarto-py.qmd",  "Quarto",    "HTML",      "check-quarto-py.html"),
     ("check-quarto-r.qmd",   "Quarto",    "LaTeX PDF", "check-quarto-r-latex.pdf"),
     ("check-quarto-r.qmd",   "Quarto",    "Typst PDF", "check-quarto-r-typst.pdf"),
     ("check-quarto-r.qmd",   "Quarto",    "HTML",      "check-quarto-r.html"),
-    ("check-notebook.ipynb", "nbconvert", "LaTeX PDF", "check-notebook.pdf"),
-    ("check-notebook.ipynb", "nbconvert", "HTML",      "check-notebook.html"),
-    ("check-notebook.ipynb", "nbconvert", "WebPDF",    "check-notebook-web.pdf"),
-    ("check-rmarkdown.Rmd",  "rmarkdown", "LaTeX PDF", "check-rmarkdown.pdf"),
-    ("check-rmarkdown.Rmd",  "rmarkdown", "HTML",      "check-rmarkdown.html"),
+    ("check-notebook.ipynb", "Quarto",    "LaTeX PDF", "check-notebook-quarto-latex.pdf"),
+    ("check-notebook.ipynb", "Quarto",    "Typst PDF", "check-notebook-quarto-typst.pdf"),
+    ("check-notebook.ipynb", "Quarto",    "HTML",      "check-notebook-quarto.html"),
+    ("check-notebook.ipynb", "nbconvert", "LaTeX PDF", "check-notebook-nbconvert-latex.pdf"),
+    ("check-notebook.ipynb", "nbconvert", "HTML",      "check-notebook-nbconvert.html"),
+    ("check-notebook.ipynb", "nbconvert", "WebPDF",    "check-notebook-nbconvert-web.pdf"),
+    ("check-rmarkdown.Rmd",  "Quarto",    "LaTeX PDF", "check-rmarkdown-quarto-latex.pdf"),
+    ("check-rmarkdown.Rmd",  "Quarto",    "Typst PDF", "check-rmarkdown-quarto-typst.pdf"),
+    ("check-rmarkdown.Rmd",  "Quarto",    "HTML",      "check-rmarkdown-quarto.html"),
+    ("check-rmarkdown.Rmd",  "rmarkdown", "LaTeX PDF", "check-rmarkdown-rmarkdown-latex.pdf"),
+    ("check-rmarkdown.Rmd",  "rmarkdown", "HTML",      "check-rmarkdown-rmarkdown.html"),
 ]
 
-# Grouped so the table stays readable. The five typographic characters always
-# agree with each other, so they are one column; anything that ever differs gets
-# its own. (label, needles, mode)
+# The full feature list, not grouped: a column that always agrees is still worth
+# showing, because the day it stops agreeing is the day this table earns its keep.
 FEATURES = [
-    ("typography",        (["Montréal", "°", "·", "–", "“"],  "all")),
-    ("literal Greek",     (["α"],                             "all")),
-    ("emoji",             (["✅", "📊"],                      "any")),
-    ("inline + display maths", (["𝛽", "β", "unbiased"],       "any")),
-    ("aligned in $$",     (["Var", "𝔼", "E["],                "any")),
-    ("markdown table",    (["you want", "write this"],        "any")),
-    ("image",             ([],                                "image")),
+    ("accented latin",    (["Montréal", "naïve"],       "all")),
+    ("degree sign",       (["°"],                       "all")),
+    ("middot",            (["·"],                       "all")),
+    ("en dash",           (["–"],                       "all")),
+    ("curly quotes",      (["“", "”"],                  "any")),
+    ("literal Greek",     (["α"],                       "all")),
+    ("emoji",             (["✅", "📊"],                "any")),
+    ("inline maths",      (["𝛽", "β", "unbiased"],      "any")),
+    ("display equation",  (["RSS"],                     "any")),
+    ("numbered equation", (["𝜎", "σ"],                  "any")),
+    ("aligned in $$",     (["Var", "𝔼", "E["],          "any")),
+    ("markdown table",    (["you want", "write this"],  "any")),
+    ("image",             ([],                          "image")),
 ]
 
 
@@ -65,35 +83,45 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
-    rows = []
-    for src, tool, out, name in ROUTES:
-        p = pathlib.Path(name)
-        if not p.exists():
-            rows.append((src, tool, out, None))
-            continue
-        rows.append((src, tool, out, text_of(p)))
+    YES, NO, NA, WARN = "✅", "❌", "—", "⚠️"
+    by_ext = {}
+    for route in ROUTES:
+        by_ext.setdefault(pathlib.Path(route[0]).suffix, []).append(route)
 
-    heads = [f for f, _ in FEATURES]
-    print("| input | rendered by | output | " + " | ".join(heads) + " |")
-    print("|" + "---|" * (len(heads) + 3))
-    for src, tool, out, body in rows:
-        if body is None:
-            note = "**did not render**"
-            print(f"| `{src}` | {tool} | {out} | " +
-                  " | ".join([note] + ["—"] * (len(FEATURES) - 1)) + " |")
-            continue
-        cells = []
-        for feat, (needles, mode) in FEATURES:
-            if mode == "image":
-                name = dict(((s2, t2, o2), n2) for s2, t2, o2, n2 in
-                            [(a, b, c, d) for a, b, c, d in ROUTES])[(src, tool, out)]
-                hit = has_image(pathlib.Path(name))
-            elif mode == "any":
-                hit = any(n in body for n in needles)
-            else:
-                hit = all(n in body for n in needles)
-            cells.append("yes" if hit else "**no**")
-        print(f"| `{src}` | {tool} | {out} | " + " | ".join(cells) + " |")
+    for ext, routes in by_ext.items():
+        sources = sorted({src for src, _, _, _ in routes})
+        # One table per extension keeps them narrow, but .qmd has two fixtures
+        # (one per language), so that table needs a column saying which.
+        multi = len(sources) > 1
+        print(f"\n**`{ext}`**" + ("" if multi else f" — `{sources[0]}`") + "\n")
+        lead = (["input"] if multi else []) + ["rendered by", "output"]
+        heads = [f for f, _ in FEATURES]
+        print("| " + " | ".join(lead + heads) + " |")
+        print("|" + "---|" * (len(lead) + len(heads)))
+
+        notes = []
+        for src, tool, out, name in routes:
+            path = pathlib.Path(name)
+            row = ([f"`{src}`"] if multi else []) + [tool, out]
+            if not path.exists():
+                notes.append((name, tool, out))
+                row[-2] = f"{tool} {WARN}"
+                print("| " + " | ".join(row + [NO] * len(FEATURES)) + " |")
+                continue
+            body = text_of(path)
+            for feat, (needles, mode) in FEATURES:
+                if mode == "image":
+                    hit = has_image(path)
+                elif mode == "any":
+                    hit = any(n in body for n in needles)
+                else:
+                    hit = all(n in body for n in needles)
+                row.append(YES if hit else NO)
+            print("| " + " | ".join(row) + " |")
+
+        for name, tool, out in notes:
+            _, why = KNOWN_TO_FAIL.get(name, (None, "this route produced no file."))
+            print(f"\n{WARN} **{tool} → {out} produces no file at all.** {why}")
     return 0
 
 

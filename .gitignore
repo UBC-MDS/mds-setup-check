@@ -1,3 +1,5 @@
+**.log
+
 .venv/
 
 # Output of the setup checks
@@ -15,6 +17,7 @@ __pycache__/
 # R Markdown intermediates, in case a render is interrupted before it tidies up
 *.knit.md
 *.tex
-check-rmarkdown_files/
+# every renderer writes one of these next to its output
+*_files/
 .Rproj.user/
 .Rhistory

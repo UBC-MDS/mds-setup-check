@@ -6,11 +6,11 @@ format:
   # and the Typst PDF as the same output for a given input unless they are named
   # apart, and rendering one then deletes the other.
   pdf:
-    output-file: check-quarto-latex.pdf
+    output-file: check-quarto-py-latex.pdf
   typst:
-    output-file: check-quarto-typst.pdf
+    output-file: check-quarto-py-typst.pdf
   html:
-    output-file: check-quarto.html
+    output-file: check-quarto-py.html
 ---
 
 ## What this file checks

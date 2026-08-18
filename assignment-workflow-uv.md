@@ -170,7 +170,7 @@ document with no Python chunks, and `uv` itself.
 
 ## 5. Producing PDFs
 
-Three routes exist. Students have all three set up.
+Four routes exist. Students have all of them set up.
 
 | route | engine | when |
 | --- | --- | --- |
@@ -185,11 +185,18 @@ those characters with nothing and still reports success, so a student gets a cle
 looking PDF with content missing. Measured on the fixtures in this repository:
 
 | | accents, dashes | inline, display, `equation` | `$$\begin{aligned}$$` | raw `\begin{align}` | Greek, emoji | images |
-| --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- |
 | LaTeX, all three routes | yes | yes | yes | yes | **no** | yes |
 | Typst | yes | yes | yes | **no** | yes | yes |
 | HTML | yes | yes | yes | yes | yes | yes |
 | WebPDF | yes | yes | yes | yes | yes | yes |
+
+**A notebook containing a markdown table cannot be exported to PDF from
+JupyterLab.** nbconvert's LaTeX template writes `\LTcaptype{none}`, which TeX Live
+rejects outright, so the export fails with an error naming a counter rather than
+the table. Rendering the same notebook with `uv run quarto render <file> --to pdf`
+works, table and all. This is why the preferred route is Quarto and not the export
+menu — Quarto reads `.ipynb` directly, so nothing has to be rewritten.
 
 **Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`, not as a bare
 `\begin{align}`.** The bare form is a raw LaTeX environment that pandoc passes

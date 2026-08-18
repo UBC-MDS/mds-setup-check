@@ -3,7 +3,7 @@ title: MDS setup check, R
 author: UBC Master of Data Science
 # knitr is Quarto's R engine. There are no Python chunks in this document, so no
 # reticulate is involved and nothing has to locate this project's Python from
-# inside R. Python is checked by check-quarto.qmd instead.
+# inside R. Python is checked by check-quarto-py.qmd instead.
 engine: knitr
 # knitr opens a graphics device for every chunk, even ones that draw nothing. On a
 # machine without XQuartz, R's default probe reaches for X11 and the render dies
