@@ -197,6 +197,17 @@ formats — `.qmd`, `.ipynb` and `.Rmd` — so it can stand in for either of the
 | JupyterLab `File > Save and Export Notebook As... > PDF` | xelatex, via nbconvert | Familiar in-Lab route, but see the markdown-table limitation below |
 | JupyterLab `... > WebPDF` | headless Chromium | No LaTeX at all; also handles emoji. **Not available on Windows** |
 
+**Why WebPDF is unavailable on Windows**, since it comes up every year and the error
+is unreadable. It is not a Windows limitation and not a playwright bug. nbconvert's
+own command-line application sets `WindowsSelectorEventLoopPolicy` on Windows (for
+tornado and pyzmq), and its WebPDF exporter then runs playwright under that policy.
+A `SelectorEventLoop` cannot start a subprocess, so launching Chromium raises
+`NotImplementedError` from deep inside asyncio. `jupyter_server` sets the same
+policy, which is why the Lab export menu fails the same way. Calling the exporter
+directly does work on Windows -- `mds-setup-check` carries `ci/webpdf.py` to prove
+it -- but there is no way for a student to reach that from the Lab menu, so tell
+them to use Typst.
+
 **LaTeX cannot typeset emoji or literal Greek letters, and does not say so.** This
 is the one to know before writing an assignment. Every LaTeX route above replaces
 those characters with nothing and still reports success, so a student gets a clean
