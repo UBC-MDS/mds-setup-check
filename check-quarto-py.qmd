@@ -1,36 +1,48 @@
 ---
-title: "MDS setup check: R Markdown"
-author: "UBC Master of Data Science"
-output:
-  pdf_document:
-    latex_engine: xelatex
-# Read by Quarto when it renders this file, ignored by rmarkdown. knitr opens a graphics
-# device for every chunk, including ones that draw nothing and including the first chunk
-# of all -- so this cannot be set from inside a chunk. Quarto's Typst format asks for svg,
-# which reaches for cairo and then for X11; on a Mac without XQuartz that fails with
-# "dev.control() called without an open graphics device", naming neither X11 nor Typst.
-knitr:
-  opts_chunk:
-    dev: "png"
+title: MDS setup check
+author: UBC Master of Data Science
+format:
+  # One source, three routes, each to its own file. Quarto treats the LaTeX PDF
+  # and the Typst PDF as the same output for a given input unless they are named
+  # apart, and rendering one then deletes the other.
+  pdf:
+    output-file: check-quarto-py-latex.pdf
+  typst:
+    output-file: check-quarto-py-typst.pdf
+  html:
+    output-file: check-quarto-py.html
 ---
 
 ## What this file checks
 
-Knitting this document to PDF exercises R, `rmarkdown`, `knitr`, pandoc and
-LaTeX together.
+Rendering this document exercises the Python half of the toolchain. Quarto has to
+find this project's Python, start a Jupyter kernel in it, run the code below, and
+hand the result to a typesetter.
 
-Note the `latex_engine: xelatex` in the header above. R Markdown uses pdflatex
-by default, which cannot typeset the characters at the bottom of this page.
+R is checked by `check-quarto-r.qmd` rather than here. Keeping one language per
+document means neither needs `reticulate`, which would otherwise have to locate
+this project's Python from inside R -- a thing that goes wrong often enough that
+it is not worth meeting in week one.
 
-```{r}
-R.version$version.string
+If you get a PDF and an HTML file, all of those pieces work.
+
+## Python and pandas
+
+```{python}
+import sys
+import pandas as pd
+
+print(sys.version)
+print("pandas", pd.__version__)
 ```
 
-```{r}
-data.frame(
-  course = c("DSCI 511", "DSCI 521", "DSCI 523"),
-  block = c(1, 1, 2),
-  language = c("Python", "Python", "R")
+```{python}
+pd.DataFrame(
+    {
+        "course": ["DSCI 511", "DSCI 521", "DSCI 523"],
+        "block": [1, 1, 2],
+        "language": ["Python", "Python", "R"],
+    }
 )
 ```
 
@@ -72,6 +84,7 @@ and emoji. Not every output route can typeset all of them, and that is expected
 rather than a fault in your installation:
 
 Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · “curly quotes” · ✅ ❌ 📊 ⚠️
+
 
 ## Writing characters that render everywhere
 

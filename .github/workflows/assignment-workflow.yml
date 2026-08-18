@@ -1,0 +1,218 @@
+# Tests what a student does every week, rather than what they do once in September.
+#
+# assignment-workflow-uv.md names this repository as the reference implementation
+# for MDS assignment repos, and its pyproject.toml is the template those repos are
+# copied from. So exercising the workflow here exercises the template.
+#
+# The job asserts on the CONTENT of the rendered documents, not on exit codes.
+# Every LaTeX route in this project exits 0 while silently replacing characters it
+# has no glyph for, so a check that only looks at exit codes passes on a broken
+# document. That is the failure this workflow exists to catch.
+
+name: Assignment workflow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Mondays at 15:00 UTC. This repository can sit unchanged for months, so the
+    # push trigger alone would never fire; everything that breaks it is upstream.
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: assignment-workflow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    # Git Bash on the Windows runner, so one set of commands works everywhere.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # ---------------------------------------------------------------- tools --
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          # renv.lock declares 4.6.1; a different minor makes renv warn on every run.
+          r-version: "4.6"
+
+      # pandoc is not a Python package and uv cannot install it. The install guides
+      # have students install it from pandoc.org for exactly this reason.
+      - uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.10.2"
+
+      - name: Install TinyTeX
+        uses: r-lib/actions/setup-tinytex@v2
+
+      # Driven through R's tinytex package rather than calling tlmgr directly.
+      # TeX Live ships `tlmgr.bat` on Windows and `tlmgr` everywhere else, so a
+      # bare `tlmgr install` is command-not-found on the Windows runner. The R
+      # package resolves that difference itself, and it is the same route the
+      # install guides put in front of students.
+      - name: Add the LaTeX packages the install guides list
+        run: |
+          Rscript -e 'if (!requireNamespace("tinytex", quietly = TRUE)) install.packages("tinytex", repos = "https://cloud.r-project.org")'
+          Rscript -e 'pkgs <- readLines("ci/tlmgr-packages.txt"); tinytex::tlmgr_install(pkgs); missing <- pkgs[!tinytex::check_installed(pkgs)]; if (length(missing)) stop("tlmgr did not install: ", paste(missing, collapse = ", "))'
+
+      # ------------------------------------------------------------- the repo --
+      # --locked also proves pyproject.toml has not drifted from uv.lock.
+      - name: uv sync --locked
+        run: uv sync --locked
+
+      - name: Install the browser the WebPDF route needs
+        run: uv run playwright install --with-deps chromium
+
+      - name: Restore the R library
+        run: Rscript -e 'renv::restore(prompt = FALSE)'
+
+      # ------------------------------------------------- the repo's contract ---
+      # assignment-workflow-uv.md section 3 makes claims about this file that
+      # assignment repos are copied from. If they stop being true, every repo
+      # derived from it inherits the problem.
+      - name: Check the pyproject contract
+        run: uv run python ci/assert-contract.py
+
+      # JupyterLab is installed but never started. What is worth asserting is that
+      # the server extensions resolve, which is the claim that justifies jupyterlab
+      # being a real dependency rather than a dev one.
+      - name: JupyterLab extensions resolve
+        run: |
+          uv run jupyter --version
+          uv run jupyter server extension list 2>&1 | tee /tmp/ext.txt
+          for ext in jupyterlab_git jupytext jupyterlab_spellchecker; do
+            grep -q "$ext" /tmp/ext.txt || { echo "missing server extension: $ext"; exit 1; }
+          done
+          # The name also appears in jupyter's own "Validating ..." line, so the greps
+          # above pass on a disabled or erroring extension. These do not.
+          if grep -qE "Error loading server extension|Validation failed|^ *X " /tmp/ext.txt; then
+            echo "a server extension is installed but does not load"; exit 1
+          fi
+
+      # ------------------------------------------------------------- renders ---
+      # -k so that one broken route does not hide the others: which routes work is
+      # the information this job exists to produce.
+      #
+      # The exit code is deliberately ignored here. `make` returns non-zero if any
+      # target failed, and one is expected to -- a notebook containing a markdown
+      # table cannot be exported to PDF by nbconvert. `make check` is the gate, and
+      # it knows which failures are known limitations and which are not. Letting
+      # make fail the job here would mean encoding that list in two places.
+      - name: Render every route
+        run: make -k all || true
+
+      - name: Show which outputs were produced
+        run: ls -la check-*.pdf check-*.html || true
+
+      - name: Check the rendered documents contain what they should
+        run: make check
+
+      # Only on Linux: the committed table is one platform's answer, and the WebPDF row
+      # differs on Windows. This is what makes "generated, do not edit by hand" true.
+      - name: Check the README's table still matches the renders
+        if: matrix.os == 'ubuntu-latest'
+        run: make matrix-check
+
+      # Into the job summary rather than the log: it is a markdown table, and an
+      # instructor comparing what survives on Windows against what survives on
+      # macOS should not have to open three logs to do it.
+      - name: Publish the feature matrix for this platform
+        if: always()
+        run: |
+          echo "## What rendered on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          make matrix >> "$GITHUB_STEP_SUMMARY" || true
+
+      # Section 7 of the guide warns that an autograding image built with
+      # `uv sync --no-dev` still needs a Python kernel, which is why ipykernel is
+      # named explicitly rather than left to arrive with jupyterlab. This runs last
+      # because it removes the dev group, and pypdf lives there.
+      - name: A Python kernel survives uv sync --no-dev
+        run: |
+          uv sync --no-dev
+          # --no-dev on every command too: a bare `uv run` re-syncs the project and puts
+          # the dev group back, so the environment under test would be the full one.
+          uv run --no-dev python -c "import otter, pandas"
+          uv run --no-dev jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
+          grep -q python3 /tmp/kernels.txt || { echo "no Python kernel after --no-dev"; exit 1; }
+
+      # The script students actually run, end to end, against the branch under test.
+      # This is the check that would have caught both defects the council review found:
+      # a fixture renamed everywhere except here, and a fixture whose image was never
+      # copied. Linux only -- it is the same script on all three platforms, and one run
+      # is enough to know that every route it names still resolves.
+      - name: Run the setup check the way a student does
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # The script clones the check project from GitHub. Pointing it at this checkout
+          # instead tests the code in the pull request rather than the code already
+          # released. `checkout -B` because actions/checkout leaves a detached HEAD on
+          # pull_request events, and `git clone` of a detached repository checks out
+          # nothing at all.
+          git -C "$GITHUB_WORKSPACE" checkout -q -B ci-under-test
+          cd "$RUNNER_TEMP"
+          # Driven through a pseudo-terminal by ci/run-setup-check.py, which answers each
+          # prompt only after seeing it. Both prompts are guarded by `[ -t 0 ]` and default
+          # to no without a terminal -- deliberately, so that a piped or scheduled run can
+          # never record a student's environment -- and feeding a pty from a plain pipe
+          # misaligns the answers, which was verified rather than assumed.
+          MDS_PROJECT_URL="$GITHUB_WORKSPACE" \
+            python3 "$GITHUB_WORKSPACE/ci/run-setup-check.py" \
+            "$GITHUB_WORKSPACE/check-setup-mds.sh" || true
+          echo "----- the log a student would submit -----"
+          sed 's/\x1b\[[0-9;]*m//g' check-setup-mds.log
+
+      - name: The setup check must find its fixtures and keep the log clean
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          log=$(sed 's/\x1b\[[0-9;]*m//g' "$RUNNER_TEMP/check-setup-mds.log")
+
+          # A fixture named by the script but absent from the project. This is the exact
+          # shape of the check-quarto.qmd rename that went unnoticed for three commits.
+          if grep -q "could not be tested since check-" <<< "$log"; then
+            echo "FAIL: the script names a fixture the project does not contain:"
+            grep "could not be tested since check-" <<< "$log"
+            exit 1
+          fi
+
+          # The Quarto routes are the ones MDS asks students to use, so they are the ones
+          # worth asserting on rather than accepting the "one route is enough" verdict.
+          for route in "quarto Typst PDF-generation was successful" \
+                       "quarto LaTeX PDF-generation was successful"; do
+            grep -q "$route" <<< "$log" || { echo "FAIL: $route"; exit 1; }
+          done
+
+          # Nothing about the environment reaches the log unless the student says yes.
+          grep -q "Not recorded. You were asked" <<< "$log" \
+            || { echo "FAIL: the environment section did not default to not-recorded"; exit 1; }
+
+          echo "the setup check found its fixtures, rendered through Quarto, and recorded"
+          echo "no environment variables"
+
+      - name: Upload the rendered documents
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-${{ matrix.os }}
+          path: |
+            check-*.pdf
+            check-*.html
+          if-no-files-found: warn

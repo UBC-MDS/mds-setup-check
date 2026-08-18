@@ -1,26 +1,32 @@
 ---
-title: "MDS setup check: R Markdown"
-author: "UBC Master of Data Science"
-output:
-  pdf_document:
-    latex_engine: xelatex
-# Read by Quarto when it renders this file, ignored by rmarkdown. knitr opens a graphics
-# device for every chunk, including ones that draw nothing and including the first chunk
-# of all -- so this cannot be set from inside a chunk. Quarto's Typst format asks for svg,
-# which reaches for cairo and then for X11; on a Mac without XQuartz that fails with
-# "dev.control() called without an open graphics device", naming neither X11 nor Typst.
+title: MDS setup check, R
+author: UBC Master of Data Science
+# knitr is Quarto's R engine. There are no Python chunks in this document, so no
+# reticulate is involved and nothing has to locate this project's Python from
+# inside R. Python is checked by check-quarto-py.qmd instead.
+engine: knitr
+# knitr opens a graphics device for every chunk, even ones that draw nothing. On a
+# machine without XQuartz, R's default probe reaches for X11 and the render dies
+# with "dev.control() called without an open graphics device". Naming a device
+# that needs no display avoids it, and costs nothing here.
 knitr:
   opts_chunk:
     dev: "png"
+format:
+  pdf:
+    output-file: check-quarto-r-latex.pdf
+  typst:
+    output-file: check-quarto-r-typst.pdf
+  html:
+    output-file: check-quarto-r.html
 ---
 
 ## What this file checks
 
-Knitting this document to PDF exercises R, `rmarkdown`, `knitr`, pandoc and
-LaTeX together.
-
-Note the `latex_engine: xelatex` in the header above. R Markdown uses pdflatex
-by default, which cannot typeset the characters at the bottom of this page.
+Rendering this document exercises the R half of the toolchain through Quarto:
+Quarto has to find R, run the code below, and hand the result to a typesetter.
+That is a different path from `check-rmarkdown.Rmd`, which R Markdown renders
+itself.
 
 ```{r}
 R.version$version.string
@@ -28,8 +34,8 @@ R.version$version.string
 
 ```{r}
 data.frame(
-  course = c("DSCI 511", "DSCI 521", "DSCI 523"),
-  block = c(1, 1, 2),
+  course   = c("DSCI 511", "DSCI 521", "DSCI 523"),
+  block    = c(1, 1, 2),
   language = c("Python", "Python", "R")
 )
 ```
@@ -67,11 +73,8 @@ $$
 
 ## Characters that are not plain English
 
-Assignments regularly contain accents, Greek letters, degree signs, proper dashes
-and emoji. Not every output route can typeset all of them, and that is expected
-rather than a fault in your installation:
-
 Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · “curly quotes” · ✅ ❌ 📊 ⚠️
+
 
 ## Writing characters that render everywhere
 

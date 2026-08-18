@@ -1,8 +1,13 @@
+**.log
+
 .venv/
 
 # Output of the setup checks
 *.pdf
 *.html
+# ...except the landing page GitHub Pages serves at the root of the site. It is not
+# render output, and the `*.html` rule above had been quietly keeping it out of the repo.
+!index.html
 check-setup-mds.log
 
 # Quarto scratch
@@ -15,6 +20,7 @@ __pycache__/
 # R Markdown intermediates, in case a render is interrupted before it tidies up
 *.knit.md
 *.tex
-check-rmarkdown_files/
+# every renderer writes one of these next to its output
+*_files/
 .Rproj.user/
 .Rhistory

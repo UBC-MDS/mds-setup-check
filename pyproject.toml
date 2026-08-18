@@ -23,3 +23,14 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+# Tools the checks in ci/ need, which students do not.
+#
+# This group also gives the repository a real difference between `uv sync` and
+# `uv sync --no-dev`, which matters because assignment-workflow-uv.md warns about
+# that flag: an autograding image built with --no-dev must still have a Python
+# kernel. Without a dev group there is nothing here to demonstrate the trap on.
+[dependency-groups]
+dev = [
+    "pypdf>=6",
+]

@@ -1,0 +1,10 @@
+# Students clone this on Windows, where git's default `autocrlf=true` would rewrite these
+# files with CRLF line endings on checkout. bash then fails on the shebang with
+# "$'\r': command not found", and GNU make appends a carriage return to every argument in
+# a recipe. Both failures are baffling and neither points at line endings.
+*.sh    text eol=lf
+Makefile text eol=lf
+*.py    text eol=lf
+*.qmd   text eol=lf
+*.Rmd   text eol=lf
+*.ipynb text eol=lf
