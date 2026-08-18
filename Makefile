@@ -111,8 +111,13 @@ check-rmarkdown-rmarkdown.html: check-rmarkdown.Rmd
 # The LaTeX-free route, rendered by a headless browser rather than TeX.
 webpdf: $(WEBPDF_OUT)  ## Render to PDF through a headless browser
 
+# Tried twice. nbconvert loads the page with playwright and waits for "networkidle" with
+# a fixed 30-second budget; the notebook pulls MathJax from a CDN, so a slow network makes
+# this fail on a machine where nothing is wrong. Seen once on a macOS runner, passing on
+# the next run with no change. A route that is actually broken still fails, twice.
 check-notebook-nbconvert-web.pdf: check-notebook.ipynb
-	uv run jupyter nbconvert $< --to webpdf --output $(basename $@)
+	uv run jupyter nbconvert $< --to webpdf --output $(basename $@) \
+	|| uv run jupyter nbconvert $< --to webpdf --output $(basename $@)
 
 # ------------------------------------------------------------------ check ----
 # Rendering is not the same as rendering correctly: every LaTeX route exits 0
