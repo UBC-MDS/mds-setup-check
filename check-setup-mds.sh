@@ -8,6 +8,28 @@
 ORANGE='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Windows is reachable through more than one POSIX layer, and they do not answer the
+# same way. Git Bash -- what the install guides tell students to use -- reports
+# OSTYPE=msys; Cygwin reports OSTYPE=cygwin and mounts the drives somewhere else
+# entirely. Testing only for msys sent a Cygwin shell down the Linux branch, where it
+# looked for `rstudio` and `tlmgr` on PATH and never scanned Program Files, and so
+# reported PostgreSQL, RStudio and tlmgr as MISSING on a machine that had all three.
+case "$OSTYPE" in
+    msys | cygwin) is_windows='yes' ;;
+    *)             is_windows='' ;;
+esac
+
+# `/c/Program Files` under Git Bash, `/cygdrive/c/Program Files` under Cygwin, and
+# somewhere else again if Windows is installed in another language or on another
+# drive. cygpath ships with both layers and is the only thing that knows; $ProgramFiles
+# comes from Windows itself. The literal is the last resort, not the first guess.
+program_files=''
+if [ -n "$is_windows" ]; then
+    program_files=$(cygpath -u "${ProgramFiles:-C:\\Program Files}" 2> /dev/null)
+    [ -n "$program_files" ] || program_files='/c/Program Files'
+    program_files="${program_files%/}"
+fi
+
 # 0. Help message and OS info
 echo ''
 echo -e "${ORANGE}# MDS setup check v2026.08.18${NC}" | tee check-setup-mds.log
@@ -63,7 +85,7 @@ elif [[ "$(uname)" == 'Darwin' ]]; then
         echo '' >> check-setup-mds.log
         echo "MISSING You need macOS Sonoma (14) or greater." >> check-setup-mds.log
     fi
-elif [[ "$OSTYPE" == 'msys' ]]; then
+elif [ -n "$is_windows" ]; then
     # MDS students work in Git Bash, so everything here is queried with tools that Git Bash
     # reaches directly. The previous version used `wmic`, which is disabled by default on
     # Windows 11 24H2 and removed in later releases.
@@ -164,7 +186,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     sys_progs=("R=4.*" "uv=0\.[0-9]+\.[0-9]+" "bash=3.*" "git=2.*" "make=3.*" "latex=3.*" "tlmgr=revision.*" \
         "docker=2[89].*" "positron=2026\..*" "quarto=1.*" pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
 # psql and Rstudio are not on PATH in windows
-elif [[ "$OSTYPE" == 'msys' ]]; then
+elif [ -n "$is_windows" ]; then
 
     # checking psql (postgresql)
     psql_found=false
@@ -172,9 +194,9 @@ elif [[ "$OSTYPE" == 'msys' ]]; then
 
     # Check for the newest supported major version first
     for pg_major in 18 17 16; do
-        if [ -x "$(command -v "/c/Program Files/PostgreSQL/${pg_major}/bin/psql")" ]; then
+        if [ -x "$(command -v "$program_files/PostgreSQL/${pg_major}/bin/psql")" ]; then
             psql_found=true
-            psql_version=$("/c/Program Files/PostgreSQL/${pg_major}/bin/psql" --version)
+            psql_version=$("$program_files/PostgreSQL/${pg_major}/bin/psql" --version)
             break
         fi
     done
@@ -187,7 +209,7 @@ elif [[ "$OSTYPE" == 'msys' ]]; then
 
     # Rstudio on windows does not accept the --version flag when run interactively
     # so this section can only be troubleshot from the script
-    rstudio_version=$('/c/Program Files/RStudio/rstudio' --version 2> /dev/null)
+    rstudio_version=$("$program_files/RStudio/rstudio" --version 2> /dev/null)
     if ! $(grep -iq "2026\..*" <<< "$rstudio_version"); then
         echo "MISSING   rstudio 2026.*" >> check-setup-mds.log
     else
@@ -291,7 +313,7 @@ mds_project_ok=''
 # whether the export is worth attempting.
 if [[ "$(uname)" == 'Darwin' ]]; then
     playwright_cache="$HOME/Library/Caches/ms-playwright"
-elif [[ "$OSTYPE" == 'msys' ]]; then
+elif [ -n "$is_windows" ]; then
     playwright_cache="$LOCALAPPDATA/ms-playwright"
 else
     playwright_cache="$HOME/.cache/ms-playwright"
@@ -912,6 +934,24 @@ else
     echo 'a network problem, a proxy, or the script having moved. The rest of this log is unaffected.' | tee -a check-setup-mds.log
 fi
 rm -f "$py_audit"
+
+# The headings are written to the log with their colour codes attached, because the
+# screen output IS this file dumped back out and the colour has to survive that. It
+# must not survive into the copy an instructor opens, though: a submitted log full of
+# `^[[0;33m## System programs^[[0m` is unreadable, and this repository's own CI has to
+# sed them out to assert on it. So they are stripped here, at the very end, after
+# everything has been written and after the screen has already had them.
+#
+# awk rather than sed: the escape has to be matched literally, and BSD sed (macOS) has
+# no portable \x1b. The ESC is passed in as a variable so no shell or awk escape
+# handling differs between platforms.
+if strip_tmp=$(mktemp 2> /dev/null); then
+    if awk -v esc="$(printf '\033')" '{ gsub(esc "\\[[0-9;]*m", ""); print }' \
+           check-setup-mds.log > "$strip_tmp" 2> /dev/null; then
+        cat "$strip_tmp" > check-setup-mds.log
+    fi
+    rm -f "$strip_tmp"
+fi
 
 echo
 echo "The above output has been saved to the file $(pwd)/check-setup-mds.log"
