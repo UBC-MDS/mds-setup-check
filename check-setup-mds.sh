@@ -276,7 +276,10 @@ done
 # `--no-sync` is used on every `uv run`, so that the check reports what is actually
 # installed instead of quietly installing the missing pieces (or hanging while offline).
 mds_project="$HOME/mds-setup-check"
-mds_project_url='https://github.com/UBC-MDS/mds-setup-check.git'
+# Overridable so that CI can point this at the branch under test rather than at main.
+# Students never set it; the default is the only address they are ever given, and it is
+# the same one the install guides publish.
+mds_project_url="${MDS_PROJECT_URL:-https://github.com/UBC-MDS/mds-setup-check.git}"
 mds_project_ok=''
 
 # Where playwright keeps the browsers it downloads. Needed in two places: the setup below

@@ -154,6 +154,59 @@ jobs:
           uv run --no-dev jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
           grep -q python3 /tmp/kernels.txt || { echo "no Python kernel after --no-dev"; exit 1; }
 
+      # The script students actually run, end to end, against the branch under test.
+      # This is the check that would have caught both defects the council review found:
+      # a fixture renamed everywhere except here, and a fixture whose image was never
+      # copied. Linux only -- it is the same script on all three platforms, and one run
+      # is enough to know that every route it names still resolves.
+      - name: Run the setup check the way a student does
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # The script clones the check project from GitHub. Pointing it at this checkout
+          # instead tests the code in the pull request rather than the code already
+          # released. `checkout -B` because actions/checkout leaves a detached HEAD on
+          # pull_request events, and `git clone` of a detached repository checks out
+          # nothing at all.
+          git -C "$GITHUB_WORKSPACE" checkout -q -B ci-under-test
+          cd "$RUNNER_TEMP"
+          # Driven through a pseudo-terminal by ci/run-setup-check.py, which answers each
+          # prompt only after seeing it. Both prompts are guarded by `[ -t 0 ]` and default
+          # to no without a terminal -- deliberately, so that a piped or scheduled run can
+          # never record a student's environment -- and feeding a pty from a plain pipe
+          # misaligns the answers, which was verified rather than assumed.
+          MDS_PROJECT_URL="$GITHUB_WORKSPACE" \
+            python3 "$GITHUB_WORKSPACE/ci/run-setup-check.py" \
+            "$GITHUB_WORKSPACE/check-setup-mds.sh" || true
+          echo "----- the log a student would submit -----"
+          sed 's/\x1b\[[0-9;]*m//g' check-setup-mds.log
+
+      - name: The setup check must find its fixtures and keep the log clean
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          log=$(sed 's/\x1b\[[0-9;]*m//g' "$RUNNER_TEMP/check-setup-mds.log")
+
+          # A fixture named by the script but absent from the project. This is the exact
+          # shape of the check-quarto.qmd rename that went unnoticed for three commits.
+          if grep -q "could not be tested since check-" <<< "$log"; then
+            echo "FAIL: the script names a fixture the project does not contain:"
+            grep "could not be tested since check-" <<< "$log"
+            exit 1
+          fi
+
+          # The Quarto routes are the ones MDS asks students to use, so they are the ones
+          # worth asserting on rather than accepting the "one route is enough" verdict.
+          for route in "quarto Typst PDF-generation was successful" \
+                       "quarto LaTeX PDF-generation was successful"; do
+            grep -q "$route" <<< "$log" || { echo "FAIL: $route"; exit 1; }
+          done
+
+          # Nothing about the environment reaches the log unless the student says yes.
+          grep -q "Not recorded. You were asked" <<< "$log" \
+            || { echo "FAIL: the environment section did not default to not-recorded"; exit 1; }
+
+          echo "the setup check found its fixtures, rendered through Quarto, and recorded"
+          echo "no environment variables"
+
       - name: Upload the rendered documents
         if: always()
         uses: actions/upload-artifact@v4

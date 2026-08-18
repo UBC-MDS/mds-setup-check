@@ -29,6 +29,7 @@ they were identified.
 | pandoc version check | raised to >= 3.10, and made a real version test rather than a substring match |
 | `Makefile` | `commands` / `install` / `all` / `check` / `matrix` / `clean`, self-documenting, Git Bash compatible |
 | Glob expansion in `sys_progs` | fixed — every array *element* is quoted now. Verified by negative control: with `R=4.txt` in the working directory the old form produced `R=4.txt` as the version test, the new form produces `R=4.*` |
+| CI runs the student script | `check-setup-mds.sh` is now run end to end on Linux, driven through a pseudo-terminal by `ci/run-setup-check.py` so its two `[ -t 0 ]` prompts are answered where a pipe would silently take the defaults. The job asserts the Quarto routes succeeded and that no environment was recorded |
 | **`assignment-workflow.yml`** | **built and green on all three OSes**, with 17 routes, a staleness gate, and the README's table diff-checked against the renders — the first workflow, described below |
 | Fonts | `atkinson` added to the `tlmgr` list in all three guides; the system font is optional and documented in `using-atkinson-hyperlegible.md` |
 | The Greek and emoji question | **answered by documentation, not by a font.** Greek is written as maths (`$\alpha$`), which every route renders; emoji have no portable form, so a document needing them uses Typst, HTML or WebPDF. `newcomputermodern` was not added — it would fix literal Greek under LaTeX and still not fix emoji, at the cost of a package every student must install |
@@ -70,7 +71,6 @@ Still open from that review, in rough order of value:
 
 | item | where | why not now |
 |---|---|---|
-| CI never runs `check-setup-mds.sh` end to end | this repo | needs a job that fakes a student machine; the contract check covers the rename hole in the meantime |
 | The log carries raw ANSI escapes | `check-setup-mds.sh` | headings are written to the file with colour codes, so an instructor reads `^[[0;33m## System programs^[[0m`. Fixing it means colouring the screen dump rather than the file, which touches every heading |
 | HTML maths assertions test source survival, not rendering | `ci/assert-renders.py` | asserting on MathJax output means parsing what the browser would do; the PDF routes already gate the real typesetting |
 | Version windows will expire | `check-setup-mds.sh` | `docker=2[89].*` breaks the day Engine ships 30.x; `positron=2026\..*` and `rstudio=2026\..*` break in January; `uv=0\.[0-9]+` breaks at 1.0. Same regex-anchoring session as the rest |
