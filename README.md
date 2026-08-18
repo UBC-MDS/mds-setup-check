@@ -90,6 +90,15 @@ it from the rendered files, and `make check` fails if any cell stops being true.
 Every route in a column behaves identically, so `Quarto -> LaTeX`, `nbconvert -> LaTeX`
 and `rmarkdown -> LaTeX` are one column here.
 
+**One route is known to be broken.** A notebook containing a **markdown table**
+cannot be exported to PDF from JupyterLab. nbconvert's LaTeX template writes
+`\LTcaptype{none}` for the table, and this version of TeX Live rejects it with
+`No counter 'none' defined`. Tables are common in assignments, so this is worth
+knowing: export that notebook with `--to webpdf`, or render it through Quarto,
+both of which handle tables. `make check` reports this as a known limitation
+rather than a failure, and will complain if it ever starts working, because the
+limitation is what is documented here.
+
 **Use this table when something looks wrong in an assignment.** If a character is
 missing from a rendered PDF and the table says **no** for that route, it is a known
 limitation of the engine rather than a broken installation, and the fix is to change

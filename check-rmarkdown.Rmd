@@ -55,8 +55,35 @@ Several lines aligned on the equals sign:
 
 ## Characters that are not plain English
 
-Assignments regularly contain accents, Greek letters, degree signs and proper
-dashes. If the line below appears correctly in the PDF, your LaTeX installation
-can typeset them:
+Assignments regularly contain accents, Greek letters, degree signs, proper dashes
+and emoji. Not every output route can typeset all of them, and that is expected
+rather than a fault in your installation:
 
 Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · “curly quotes” · ✅ ❌ 📊 ⚠️
+
+## Writing characters that render everywhere
+
+The line above is deliberately written the way that *fails*, so that this project
+demonstrates the problem. When you write an assignment, write it the way that
+works:
+
+| you want | write this | not this |
+| --- | --- | --- |
+| a Greek letter | `$\alpha$`, `$\beta$`, `$\sigma^2$` | `α`, `β`, `σ²` |
+| a Greek letter in a sentence | the level $\alpha = 0.05$ | the level α = 0.05 |
+| a variable named with a Greek letter | `alpha` in code, `$\alpha$` in prose | `α` as an identifier |
+
+Written as maths, Greek renders in **every** route including LaTeX, because maths
+is set from a different font than ordinary text:
+
+- as maths: $\alpha$, $\beta$, $\gamma$, $\hat{\sigma}^2$
+- as literal text: α, β, γ, σ² — these vanish in a LaTeX PDF
+
+**Emoji have no portable form.** A shortcode such as `:white_check_mark:` is not
+converted by Quarto, and there is no LaTeX-safe way to write one in markdown. If a
+document needs emoji, render it with Typst, HTML or WebPDF rather than LaTeX.
+
+**What you should see.** In the HTML and in the Typst PDF, every character above
+appears. In the LaTeX PDF the accents, the dashes and the mathematics appear, but
+the Greek letters and the emoji do not — LaTeX has no glyph for them and drops
+them silently. If an assignment needs emoji in a PDF, render it with Typst.

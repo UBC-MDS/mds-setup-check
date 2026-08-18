@@ -36,6 +36,7 @@ FEATURES = [
     ("display equation",      (["RSS", "∑", "sum"],              "any")),
     ("numbered equation",     (["𝜎", "σ", "1"],                  "any")),
     ("aligned equations",     (["Var", "𝔼", "E["],               "any")),
+    ("markdown table",        (["you want", "write this"],        "all")),
     ("embedded image",        ([],                                "image")),
 ]
 
