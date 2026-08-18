@@ -29,6 +29,9 @@ ROUTES = {
     "check-notebook.pdf":      ("nbconvert -> LaTeX",   LATEX),
     "check-rmarkdown.pdf":     ("rmarkdown -> LaTeX",   LATEX),
     "check-quarto-typst.pdf":  ("Quarto -> Typst",      FULL),
+    "check-quarto-r-latex.pdf": ("Quarto R -> LaTeX",   LATEX),
+    "check-quarto-r-typst.pdf": ("Quarto R -> Typst",   FULL),
+    "check-quarto-r.html":     ("Quarto R -> HTML",     FULL),
     "check-notebook-web.pdf":  ("nbconvert -> Chromium", FULL),
     "check-quarto.html":       ("Quarto -> HTML",       FULL),
     "check-notebook.html":     ("nbconvert -> HTML",    FULL),
@@ -41,6 +44,7 @@ CHECKS = [
     ("degree sign",    "°C",       {LATEX, FULL}),
     ("en dash",        "–",        {LATEX, FULL}),
     ("literal Greek",  "α",        {FULL}),
+    ("emoji",          "✅",       {FULL}),
 ]
 
 

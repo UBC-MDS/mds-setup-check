@@ -32,43 +32,59 @@ uv run jupyter lab
 ```
 
 The R packages work the same way, managed by
-[renv](https://rstudio.github.io/renv/) instead of uv:
+[renv](https://rstudio.github.io/renv/) instead of uv. One command installs
+everything this project needs in both languages, plus the browser one of the PDF
+routes uses:
 
 ```bash
-make r-packages
+make install
 ```
 
-which is shorthand for `Rscript -e 'renv::restore(prompt = FALSE)'`. It installs
-the versions recorded in `renv.lock` into `renv/library`, so the R side of this
-project runs the same way for everybody and does not depend on what you happen
-to have installed globally. On Ubuntu this is the slowest step in the project;
-give it a few minutes the first time.
-
-To check that you can produce PDFs, render every document in the project:
+Then render every document by every route:
 
 ```bash
-make
+make all
 ```
 
-That runs the three routes MDS uses, in order, and stops at the first one that
-fails so you can see the error:
+and check that the results are actually correct:
+
+```bash
+make check
+```
+
+`make` on its own lists every target with a one-line description, so you do not
+have to read this file to remember them.
+
+### What each document proves
 
 | document | rendered by | what it proves |
 | --- | --- | --- |
-| `check-quarto.qmd` | `uv run quarto render` | Quarto can find this project's Python, start a kernel, and typeset the result with LaTeX |
+| `check-quarto.qmd` | `uv run quarto render` | Quarto finds this project's Python, starts a kernel, and typesets the result |
+| `check-quarto-r.qmd` | `uv run quarto render` | Quarto finds R and runs it — a different path from R Markdown |
 | `check-notebook.ipynb` | `uv run jupyter nbconvert` | the same route as JupyterLab's `File -> Save and Export Notebook As... -> PDF`, which goes through pandoc |
 | `check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
 
-Each document prints its versions and ends with a line of accented and Greek
-characters, so opening the PDFs also tells you whether LaTeX has the fonts it
-needs.
+R and Python live in separate documents on purpose. Putting both in one would
+need `reticulate` to locate this project's Python from inside R, which is a thing
+that goes wrong often enough not to be worth meeting in week one.
 
-There is one more route that does not use LaTeX at all:
+### Not every route can typeset every character
 
-```bash
-uv run playwright install chromium   # once, downloads a browser
-make webpdf
-```
+Each document ends with a line of accents, Greek letters, dashes and emoji, and
+with a line of mathematics. Those do not all survive every route, which is a fact
+about the tools rather than a fault in your installation:
+
+| route | accents, dashes, maths | Greek letters, emoji |
+| --- | --- | --- |
+| `make pdf` — LaTeX | yes | **no** |
+| `make typst` — Typst | yes | yes |
+| `make html` | yes | yes |
+| `make webpdf` — headless browser | yes | yes |
+
+LaTeX drops the characters it has no glyph for **silently**, and still reports
+success. So if an assignment contains emoji and has to be a PDF, render it with
+Typst. `make check` asserts all of this, which is why it looks inside the rendered
+files rather than only checking that they exist.
 
 `make clean` deletes everything the renders produced.
 
@@ -84,10 +100,14 @@ make webpdf
 | `.python-version` | the Python version this project runs on |
 | `renv.lock` | the same idea for R packages |
 | `.Rprofile`, `renv/` | how R finds this project's own package library |
-| `Makefile` | renders every document to PDF |
-| `check-quarto.qmd` | Quarto fixture, with a Python code chunk |
+| `Makefile` | installs, renders and checks; run `make` to list its targets |
+| `check-quarto.qmd` | Quarto fixture, Python |
+| `check-quarto-r.qmd` | Quarto fixture, R |
 | `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
 | `check-rmarkdown.Rmd` | R Markdown fixture |
+| `ci/assert-renders.py` | checks the rendered files contain what they should, per route |
+| `ci/assert-contract.py` | checks this repo still matches what `assignment-workflow-uv.md` describes |
+| `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
 | `check-setup-mds.sh` | the setup check itself, the script students are told to run |
 | `check-python-installs.sh` | reports every Python already on the machine; run on its own before installing uv, and again from inside the setup check |
 | `mds-help.sh` | the `mds-help` reference card students install into their shell |
@@ -125,7 +145,18 @@ Note that the fixtures are not empty files. An empty notebook has no markdown
 cells, so rendering one never calls pandoc and passes on machines where PDF
 export of a real assignment would fail.
 
-`renv.lock` deliberately contains only what `check-rmarkdown.Rmd` needs, which
+`renv.lock` uses implicit snapshots, so it records only the packages the documents
+here actually use. It previously used `snapshot.type: "all"`, which pulled in the
+fifteen base and recommended packages that ship with R. Those are invisible on any
+machine that already has them and a hard failure on one that does not: a fresh
+macOS runner tried to compile `rpart`, `Matrix` and `nlme` from source and died on
+a missing header.
+
+The repository is Posit Package Manager rather than CRAN. CRAN publishes no Linux
+binaries at all, so an Ubuntu student compiles every R package from source; P3M
+serves the same packages pre-built. It matters again for Docker images later.
+
+`renv.lock` deliberately contains only what
 is `rmarkdown` and its dependencies. It is not a copy of the R packages the
 installation guides ask students to install globally — the setup check script
 verifies those separately, against the user library. The two are different

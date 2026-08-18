@@ -43,9 +43,9 @@ install:  ## Install the Python and R packages, and the browser for webpdf
 # -------------------------------------------------------------------- all ----
 all: pdf typst html webpdf  ## Render every document by every route
 
-pdf: check-quarto-latex.pdf check-notebook.pdf check-rmarkdown.pdf  ## Render to PDF through LaTeX
-typst: check-quarto-typst.pdf  ## Render to PDF through Typst, which handles emoji and Greek
-html: check-quarto.html check-notebook.html check-rmarkdown.html  ## Render to HTML
+pdf: check-quarto-latex.pdf check-quarto-r-latex.pdf check-notebook.pdf check-rmarkdown.pdf  ## Render to PDF through LaTeX
+typst: check-quarto-typst.pdf check-quarto-r-typst.pdf  ## Render to PDF through Typst, which handles emoji and Greek
+html: check-quarto.html check-quarto-r.html check-notebook.html check-rmarkdown.html  ## Render to HTML
 
 # Quarto is the route MDS asks you to use for anything you hand in.
 # check-quarto.qmd contains a Python code chunk, so Quarto has to find this
@@ -64,6 +64,18 @@ check-quarto.html: check-quarto.qmd
 # unless they are named apart, and rendering one then deletes the other.
 check-quarto-typst.pdf: check-quarto.qmd
 	uv run quarto render $< --to typst
+
+# The R half of the toolchain through Quarto. Separate document rather than R and
+# Python chunks in one, so that no reticulate is needed to find this project's
+# Python from inside R.
+check-quarto-r-latex.pdf: check-quarto-r.qmd
+	uv run quarto render $< --to pdf
+
+check-quarto-r-typst.pdf: check-quarto-r.qmd
+	uv run quarto render $< --to typst
+
+check-quarto-r.html: check-quarto-r.qmd
+	uv run quarto render $< --to html
 
 # The same route as JupyterLab's File -> Save and Export Notebook As... -> PDF.
 # It goes through pandoc and LaTeX.
@@ -98,9 +110,9 @@ check:  ## Check the rendered documents actually contain what they should
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced
 	rm -f check-quarto-latex.pdf check-notebook.pdf check-rmarkdown.pdf
-	rm -f check-quarto-typst.pdf
-	rm -f check-quarto.html check-notebook.html check-rmarkdown.html
+	rm -f check-quarto-typst.pdf check-quarto-r-latex.pdf check-quarto-r-typst.pdf
+	rm -f check-quarto.html check-quarto-r.html check-notebook.html check-rmarkdown.html
 	rm -f check-notebook-web.pdf
 	rm -f check-setup-mds.log *.log
 	rm -f *.tex *.knit.md *.quarto_ipynb
-	rm -rf .quarto check-quarto_files check-notebook_files check-rmarkdown_files
+	rm -rf .quarto check-quarto_files check-notebook_files check-rmarkdown_files check-quarto-r_files

@@ -1,0 +1,46 @@
+---
+title: MDS setup check, R
+author: UBC Master of Data Science
+# knitr is Quarto's R engine. There are no Python chunks in this document, so no
+# reticulate is involved and nothing has to locate this project's Python from
+# inside R. Python is checked by check-quarto.qmd instead.
+engine: knitr
+format:
+  pdf:
+    output-file: check-quarto-r-latex.pdf
+  typst:
+    output-file: check-quarto-r-typst.pdf
+  html:
+    output-file: check-quarto-r.html
+---
+
+## What this file checks
+
+Rendering this document exercises the R half of the toolchain through Quarto:
+Quarto has to find R, run the code below, and hand the result to a typesetter.
+That is a different path from `check-rmarkdown.Rmd`, which R Markdown renders
+itself.
+
+```{r}
+R.version$version.string
+```
+
+```{r}
+data.frame(
+  course   = c("DSCI 511", "DSCI 521", "DSCI 523"),
+  block    = c(1, 1, 2),
+  language = c("Python", "Python", "R")
+)
+```
+
+## Characters that are not plain English
+
+Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · "curly quotes" · ✅ ❌ 📊 ⚠️
+
+Mathematics is typeset separately from ordinary text, so it works everywhere:
+$\alpha = 0.05$ and $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$.
+
+**What you should see.** In the HTML and in the Typst PDF, every character above
+appears. In the LaTeX PDF the accents, the dashes and the mathematics appear, but
+the Greek letters and the emoji do not — LaTeX has no glyph for them and drops
+them silently. If an assignment needs emoji in a PDF, render it with Typst.

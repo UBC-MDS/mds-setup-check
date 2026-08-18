@@ -175,10 +175,37 @@ Three routes exist. Students have all three set up.
 | route | engine | when |
 | --- | --- | --- |
 | `uv run quarto render <file> --to pdf` | lualatex | **Preferred.** Handles `.ipynb`, `.qmd` and `.Rmd` |
+| `uv run quarto render <file> --to typst` | Typst | When the document contains emoji or Greek letters |
 | JupyterLab `File > Save and Export Notebook As... > PDF` | xelatex, via nbconvert | Familiar in-Lab route |
-| JupyterLab `... > WebPDF` | headless Chromium | Escape hatch when LaTeX objects to something |
+| JupyterLab `... > WebPDF` | headless Chromium | No LaTeX at all; also handles emoji |
 
-Four things to know before you write PDF instructions into an assignment.
+**LaTeX cannot typeset emoji or literal Greek letters, and does not say so.** This
+is the one to know before writing an assignment. Every LaTeX route above replaces
+those characters with nothing and still reports success, so a student gets a clean
+looking PDF with content missing. Measured on the fixtures in this repository:
+
+| | accents, dashes, maths | Greek letters, emoji |
+| --- | --- | --- |
+| LaTeX, all three routes | yes | **no** |
+| Typst | yes | yes |
+| HTML | yes | yes |
+| WebPDF | yes | yes |
+
+Mathematics is unaffected: `$\alpha$` typesets correctly everywhere, because maths
+is set from a different font. It is only literal `α` in prose that disappears. So
+an assignment written with LaTeX maths is safe; one with an emoji in a heading, or
+a data frame column named `α`, is not.
+
+If an assignment needs those characters in a PDF, use Typst. It ships with Quarto,
+needs no LaTeX, and requires no extra installation.
+
+**Keep R and Python in separate documents.** Quarto's `knitr` engine can run both
+in one file, but the Python chunks go through `reticulate`, which has to locate
+the project's `.venv` from inside R. That is an extra failure mode with its own
+diagnostics, and it is not worth introducing in an early assignment. One language
+per document needs no `reticulate` at all.
+
+Four more things to know before you write PDF instructions into an assignment.
 
 **Quarto does not execute `.ipynb` files by default.** A student who edits a
 notebook without re-running the cells gets a PDF with stale outputs and no

@@ -15,11 +15,16 @@ format:
 
 ## What this file checks
 
-Rendering this document to PDF exercises the whole toolchain in one step.
-Quarto has to find this project's Python, start a Jupyter kernel in it, run the
-code below, and hand the result to LaTeX.
+Rendering this document exercises the Python half of the toolchain. Quarto has to
+find this project's Python, start a Jupyter kernel in it, run the code below, and
+hand the result to a typesetter.
 
-If you get a PDF, all of those pieces work.
+R is checked by `check-quarto-r.qmd` rather than here. Keeping one language per
+document means neither needs `reticulate`, which would otherwise have to locate
+this project's Python from inside R -- a thing that goes wrong often enough that
+it is not worth meeting in week one.
+
+If you get a PDF and an HTML file, all of those pieces work.
 
 ## Python and pandas
 
@@ -43,8 +48,16 @@ pd.DataFrame(
 
 ## Characters that are not plain English
 
-Assignments regularly contain accents, Greek letters, degree signs and proper
-dashes. If the line below appears correctly in the PDF, your LaTeX installation
-can typeset them:
+Assignments regularly contain accents, Greek letters, degree signs, proper dashes
+and emoji. Not every output route can typeset all of them, and that is expected
+rather than a fault in your installation:
 
-Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · "curly quotes"
+Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · "curly quotes" · ✅ ❌ 📊 ⚠️
+
+Mathematics is typeset separately from ordinary text, so it works everywhere:
+$\alpha = 0.05$ and $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$.
+
+**What you should see.** In the HTML and in the Typst PDF, every character above
+appears. In the LaTeX PDF the accents, the dashes and the mathematics appear, but
+the Greek letters and the emoji do not — LaTeX has no glyph for them and drops
+them silently. If an assignment needs emoji in a PDF, render it with Typst.

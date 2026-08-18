@@ -32,4 +32,4 @@ Assignments regularly contain accents, Greek letters, degree signs and proper
 dashes. If the line below appears correctly in the PDF, your LaTeX installation
 can typeset them:
 
-Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20
+Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · ✅ ❌ 📊 ⚠️
