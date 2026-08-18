@@ -36,7 +36,7 @@ def check(ok: bool, section: str, claim: str, detail: str = "") -> None:
 
 def main() -> int:
     root = pathlib.Path(__file__).resolve().parent.parent
-    pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+    pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     deps = pyproject["project"]["dependencies"]
     names = {d.split(">=")[0].split("[")[0].split("==")[0].strip() for d in deps}
 
@@ -55,14 +55,14 @@ def main() -> int:
 
     # §3: the rest of the repo contract
     check((root / "uv.lock").exists(), "3", "uv.lock is committed")
-    gitignore = (root / ".gitignore").read_text()
+    gitignore = (root / ".gitignore").read_text(encoding="utf-8")
     check(".venv" in gitignore, "3", ".gitignore covers .venv")
     check("requires-python" in pyproject["project"], "3",
           "requires-python is set")
 
     # §5: the routes the guides promise. A Makefile target per route means the
     # promise is executable rather than prose.
-    makefile = (root / "Makefile").read_text()
+    makefile = (root / "Makefile").read_text(encoding="utf-8")
     for target, route in [("pdf:", "LaTeX PDF"), ("typst:", "Typst PDF"),
                           ("html:", "HTML"), ("webpdf:", "WebPDF")]:
         check(f"\n{target}" in makefile, "5", f"{route} route has a make target")

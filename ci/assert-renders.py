@@ -35,12 +35,31 @@ FULL = "full"     # HTML and the browser route: everything
 # Routes known not to produce output at all, with the reason. A route listed here
 # is reported as a known limitation rather than a failure -- but if it starts
 # working, that is reported too, because the limitation is what is documented.
+# Some limitations are platform specific, so an entry can name the platforms it
+# applies to. A route that fails somewhere it is not expected to still fails the
+# check, and a route that starts working anywhere is reported too.
 KNOWN_TO_FAIL = {
+    "check-notebook-web.pdf": (
+        {"win32"},
+        "playwright drives the browser through asyncio subprocesses, which raise "
+        "NotImplementedError on Windows in this Python. WebPDF export therefore "
+        "does not work there; the same notebook exports fine on macOS and Linux."),
     "check-notebook.pdf":
         "nbconvert's LaTeX template emits \\LTcaptype{none} for a markdown table, "
         "which this TeX Live rejects with \"No counter 'none' defined\". Any notebook "
-        "containing a markdown table fails JupyterLab's PDF export for the same reason.",
+        "containing a markdown table fails JupyterLab's PDF export for the same "
+        "reason. Rendering the same notebook through Quarto works, table and all.",
 }
+KNOWN_TO_FAIL = {k: (v if isinstance(v, tuple) else (None, v))
+                 for k, v in KNOWN_TO_FAIL.items()}
+
+
+def is_known(name: str) -> bool:
+    entry = KNOWN_TO_FAIL.get(name)
+    if entry is None:
+        return False
+    platforms, _ = entry
+    return platforms is None or sys.platform in platforms
 
 ROUTES = {
     "check-quarto-latex.pdf":  ("Quarto -> LaTeX",      LATEX),
@@ -74,7 +93,7 @@ CHECKS = [
 
 def text_of(path: pathlib.Path) -> str:
     if path.suffix == ".html":
-        raw = path.read_text(errors="replace")
+        raw = path.read_text(encoding="utf-8", errors="replace")
         raw = re.sub(r"<(script|style).*?</\1>", " ", raw, flags=re.S)
         import html as _html
         return _html.unescape(re.sub(r"<[^>]+>", " ", raw))
@@ -88,13 +107,13 @@ def main() -> int:
     for name, (label, kind) in ROUTES.items():
         path = pathlib.Path(name)
         if not path.exists():
-            if name in KNOWN_TO_FAIL:
+            if is_known(name):
                 print(f"  known    {label:<24} does not render -- see KNOWN_TO_FAIL")
                 continue
             missing.append((label, name))
             print(f"  MISSING  {label:<24} {name} was not produced")
             continue
-        if name in KNOWN_TO_FAIL:
+        if is_known(name):
             broken.append(f"{name}: rendered, but is listed in KNOWN_TO_FAIL -- "
                           f"the limitation may be fixed; remove it from that list")
             print(f"  FAIL     {label:<24} now renders; update KNOWN_TO_FAIL")
@@ -151,11 +170,12 @@ def main() -> int:
         print(f"{len(ok)} of {total} routes are fully correct.")
         return 1
 
-    known = len(KNOWN_TO_FAIL)
-    if known:
-        print(f"{total - known} of {total} routes rendered correctly; "
-              f"{known} is a known limitation:")
-        for name, why in KNOWN_TO_FAIL.items():
+    applicable = {n: w for n, (p, w) in KNOWN_TO_FAIL.items()
+                  if p is None or sys.platform in p}
+    if applicable:
+        print(f"{total - len(applicable)} of {total} routes rendered correctly; "
+              f"{len(applicable)} known limitation(s) on this platform:")
+        for name, why in applicable.items():
             print(f"  - {name}: {why}")
         return 0
     print(f"All {total} routes rendered, and each contains what it should.")

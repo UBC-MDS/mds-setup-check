@@ -70,53 +70,48 @@ that goes wrong often enough not to be worth meeting in week one.
 
 ### What renders where
 
-Each fixture contains the same set of features, so the same table applies whichever
-document you look at. **This is measured, not asserted** — `make matrix` regenerates
-it from the rendered files, and `make check` fails if any cell stops being true.
+Every fixture contains the same features, so any difference below is a property of
+the toolchain rather than the document. **This is measured, not asserted** —
+`make matrix` regenerates it from the rendered files, and `make check` fails if any
+cell stops being true.
 
-| feature | LaTeX PDF | Typst PDF | HTML | WebPDF |
-|---|---|---|---|---|
-| accented latin — `Montréal`, `naïve`, `Öl` | yes | yes | yes | yes |
-| degree sign, middot, en dash | yes | yes | yes | yes |
-| curly quotes | yes | yes | yes | yes |
-| **literal Greek in prose — `α β γ`** | **no** | yes | yes | yes |
-| **emoji — `✅ ❌ 📊 ⚠️`** | **no** | yes | yes | yes |
-| inline maths — `$\alpha$` | yes | yes | yes | yes |
-| display equation — `$$…$$` | yes | yes | yes | yes |
-| numbered equation — `\begin{equation}` | yes | yes | yes | yes |
-| aligned equations — `$$\begin{aligned}…$$` | yes | yes | yes | yes |
-| **raw `\begin{align}` environment** | yes | **no** | yes | yes |
-| embedded image | yes | yes | yes | yes |
+| input | rendered by | output | typography | literal Greek | emoji | inline + display maths | aligned in $$ | markdown table | image |
+|---|---|---|---|---|---|---|---|---|---|
+| `check-quarto.qmd` | Quarto | LaTeX PDF | yes | **no** | **no** | yes | yes | yes | yes |
+| `check-quarto.qmd` | Quarto | Typst PDF | yes | yes | yes | yes | yes | yes | yes |
+| `check-quarto.qmd` | Quarto | HTML | yes | yes | yes | yes | yes | yes | yes |
+| `check-quarto-r.qmd` | Quarto | LaTeX PDF | yes | **no** | **no** | yes | yes | yes | yes |
+| `check-quarto-r.qmd` | Quarto | Typst PDF | yes | yes | yes | yes | yes | yes | yes |
+| `check-quarto-r.qmd` | Quarto | HTML | yes | yes | yes | yes | yes | yes | yes |
+| `check-notebook.ipynb` | nbconvert | LaTeX PDF | **did not render** | — | — | — | — | — | — |
+| `check-notebook.ipynb` | nbconvert | HTML | yes | yes | yes | yes | yes | yes | yes |
+| `check-notebook.ipynb` | nbconvert | WebPDF | yes | yes | yes | yes | yes | yes | yes |
+| `check-rmarkdown.Rmd` | rmarkdown | LaTeX PDF | yes | **no** | **no** | yes | yes | yes | yes |
+| `check-rmarkdown.Rmd` | rmarkdown | HTML | yes | yes | yes | yes | yes | yes | yes |
 
-Every route in a column behaves identically, so `Quarto -> LaTeX`, `nbconvert -> LaTeX`
-and `rmarkdown -> LaTeX` are one column here.
-
-**One route is known to be broken.** A notebook containing a **markdown table**
-cannot be exported to PDF from JupyterLab. nbconvert's LaTeX template writes
-`\LTcaptype{none}` for the table, and this version of TeX Live rejects it with
-`No counter 'none' defined`. Tables are common in assignments, so this is worth
-knowing: export that notebook with `--to webpdf`, or render it through Quarto,
-both of which handle tables. `make check` reports this as a known limitation
-rather than a failure, and will complain if it ever starts working, because the
-limitation is what is documented here.
+The **input** column matters as much as the output one. `check-notebook.ipynb` to a
+LaTeX PDF is the only route that fails outright, and the same output format from a
+`.qmd` is fine — so this is a property of nbconvert, not of PDFs.
 
 **Use this table when something looks wrong in an assignment.** If a character is
-missing from a rendered PDF and the table says **no** for that route, it is a known
-limitation of the engine rather than a broken installation, and the fix is to change
-route rather than to reinstall anything.
+missing and the table says **no** for that route, it is a known limitation of the
+toolchain rather than a broken installation, and the fix is to change route.
 
-Two of these are worth knowing before writing an assignment:
+Three things are worth knowing before writing an assignment:
 
-- **LaTeX silently drops Greek letters and emoji.** It does not warn, and it still
-  exits successfully, so the PDF simply arrives with holes in it. A data frame
-  column named `α` disappears the same way. Render with Typst if the document needs
-  them.
-- **Typst silently drops raw LaTeX environments.** `\begin{align}` written at the
-  top level is a raw block that pandoc passes through untranslated, so Typst never
-  sees any maths and renders nothing — without a warning. Typst aligns equations
-  perfectly well when the maths is written as `$$\begin{aligned}…\end{aligned}$$`,
-  which pandoc parses and converts. **Use `aligned` inside `$$`, not bare `align`**,
-  and every route works.
+- **LaTeX cannot do literal Greek or emoji.** It drops them without warning and
+  still reports success, so the PDF simply arrives with holes in it. Writing Greek
+  as maths — `$\alpha$` rather than `α` — works in every route, and is the right
+  spelling in a statistics program anyway. Emoji have no portable form, so a
+  document that needs them wants Typst, HTML or WebPDF.
+- **Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`.** A bare
+  `\begin{align}` is a raw LaTeX environment that pandoc passes through
+  untranslated, so Typst never sees any maths and renders nothing — silently.
+  Inside `$$` every route handles it.
+- **A notebook containing a markdown table cannot be exported to PDF from
+  JupyterLab.** nbconvert's template writes `\LTcaptype{none}`, which this TeX Live
+  rejects. Rendering the same notebook through Quarto works, table and all, so the
+  fix is to use Quarto rather than to change the notebook.
 
 `make clean` deletes everything the renders produced.
 
