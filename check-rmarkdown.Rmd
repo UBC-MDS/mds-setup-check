@@ -4,16 +4,15 @@ author: "UBC Master of Data Science"
 output:
   pdf_document:
     latex_engine: xelatex
+# Read by Quarto when it renders this file, ignored by rmarkdown. knitr opens a graphics
+# device for every chunk, including ones that draw nothing and including the first chunk
+# of all -- so this cannot be set from inside a chunk. Quarto's Typst format asks for svg,
+# which reaches for cairo and then for X11; on a Mac without XQuartz that fails with
+# "dev.control() called without an open graphics device", naming neither X11 nor Typst.
+knitr:
+  opts_chunk:
+    dev: "png"
 ---
-
-```{r setup, include=FALSE}
-# knitr opens a graphics device for every chunk, including ones that draw
-# nothing. Quarto's Typst format asks for svg, which reaches for cairo and then
-# for X11; on a Mac without XQuartz that fails with the unhelpful "dev.control()
-# called without an open graphics device". Naming a device that needs no display
-# costs nothing here and works for both renderers of this file.
-knitr::opts_chunk$set(dev = "png")
-```
 
 ## What this file checks
 

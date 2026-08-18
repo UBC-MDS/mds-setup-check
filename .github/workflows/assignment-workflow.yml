@@ -126,6 +126,12 @@ jobs:
       - name: Check the rendered documents contain what they should
         run: make check
 
+      # Only on Linux: the committed table is one platform's answer, and the WebPDF row
+      # differs on Windows. This is what makes "generated, do not edit by hand" true.
+      - name: Check the README's table still matches the renders
+        if: matrix.os == 'ubuntu-latest'
+        run: make matrix-check
+
       # Into the job summary rather than the log: it is a markdown table, and an
       # instructor comparing what survives on Windows against what survives on
       # macOS should not have to open three logs to do it.

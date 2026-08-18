@@ -60,7 +60,7 @@ FEATURES = [
     ("inline maths",      (["𝛽", "β", "unbiased"],      "any")),
     ("display equation",  (["RSS"],                     "any")),
     ("numbered equation", (["𝜎", "σ"],                  "any")),
-    ("aligned in $$",     (["Var", "𝔼", "E["],          "any")),
+    ("aligned equations", (["Var", "𝔼", "E["],          "any")),
     ("markdown table",    (["you want", "write this"],  "any")),
     ("image",             ([],                          "image")),
 ]

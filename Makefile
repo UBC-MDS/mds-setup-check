@@ -21,7 +21,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all install clean check matrix pdf typst html webpdf
+.PHONY: commands all install clean check matrix matrix-check pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -57,7 +57,7 @@ HTML_OUT  = check-quarto-py.html check-quarto-r.html \
             check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html
 WEBPDF_OUT = check-notebook-nbconvert-web.pdf
 
-# Three inputs, three renderers, four outputs. Quarto can render every input
+# Four documents in three input formats, three renderers, four output formats. Quarto can render every input
 # format, so those combinations are all here; nbconvert only reads .ipynb and
 # rmarkdown only reads .Rmd, so those have fewer.
 pdf: $(LATEX_OUT)  ## Render to PDF through LaTeX
@@ -123,6 +123,9 @@ check:  ## Check the rendered documents actually contain what they should
 
 matrix:  ## Print the feature-by-route table that is in the README
 	uv run python ci/feature-matrix.py
+
+matrix-check:  ## Check the README's table still matches the rendered files
+	uv run python ci/check-matrix-block.py
 
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced

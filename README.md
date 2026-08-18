@@ -105,7 +105,7 @@ nbconvert only reads `.ipynb` and `rmarkdown` only reads `.Rmd`.
 
 **`.qmd`**
 
-| input | rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned in $$ | markdown table | image |
+| input | rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -116,7 +116,7 @@ nbconvert only reads `.ipynb` and `rmarkdown` only reads `.Rmd`.
 
 **`.ipynb`** — `check-notebook.ipynb`
 
-| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned in $$ | markdown table | image |
+| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -129,7 +129,7 @@ nbconvert only reads `.ipynb` and `rmarkdown` only reads `.Rmd`.
 
 **`.Rmd`** — `check-rmarkdown.Rmd`
 
-| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned in $$ | markdown table | image |
+| rendered by | output | accented latin | degree sign | middot | en dash | curly quotes | literal Greek | emoji | inline maths | display equation | numbered equation | aligned equations | markdown table | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -190,7 +190,11 @@ Three things are worth knowing before writing an assignment:
 | `check-rmarkdown.Rmd` | R Markdown fixture |
 | `ci/assert-renders.py` | checks the rendered files contain what they should, per route |
 | `ci/assert-contract.py` | checks this repo still matches what `assignment-workflow-uv.md` describes |
+| `ci/feature-matrix.py` | measures which features survive which route, and prints the tables above |
+| `ci/check-matrix-block.py` | fails if those tables have drifted from the rendered files |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
+| `mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
+| [`using-atkinson-hyperlegible.md`](using-atkinson-hyperlegible.md) | optional: how to set a document in the Atkinson Hyperlegible typeface |
 | `check-setup-mds.sh` | the setup check itself, the script students are told to run |
 | `check-python-installs.sh` | reports every Python already on the machine; run on its own before installing uv, and again from inside the setup check |
 | `mds-help.sh` | the `mds-help` reference card students install into their shell |
