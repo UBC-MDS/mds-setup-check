@@ -6,6 +6,15 @@ output:
     latex_engine: xelatex
 ---
 
+```{r setup, include=FALSE}
+# knitr opens a graphics device for every chunk, including ones that draw
+# nothing. Quarto's Typst format asks for svg, which reaches for cairo and then
+# for X11; on a Mac without XQuartz that fails with the unhelpful "dev.control()
+# called without an open graphics device". Naming a device that needs no display
+# costs nothing here and works for both renderers of this file.
+knitr::opts_chunk$set(dev = "png")
+```
+
 ## What this file checks
 
 Knitting this document to PDF exercises R, `rmarkdown`, `knitr`, pandoc and
@@ -34,7 +43,7 @@ Assignments include plots and images, which have to survive the render too.
 
 ## Mathematics
 
-Inline: the estimator $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$ is unbiased.
+Inline: the estimator $\hat{\beta}_{\mathrm{OLS}} = (X^{\top}X)^{-1}X^{\top}y$ is unbiased.
 
 A display equation:
 

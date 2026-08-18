@@ -51,7 +51,38 @@ report_dir() {
 }
 
 echo ''
-echo -e "${ORANGE}# Python installations already on this computer (v2026.08.15)${NC}"
+# Any value whose name looks like a credential is masked before it reaches the report.
+# The shell-configuration grep below matches on "anaconda", and ANACONDA_API_TOKEN is a
+# real variable, so a matching line can carry a token into a log the student submits.
+redact_secrets() {
+    awk '
+    BEGIN { split("key token secret password passwd credential auth", kw, " ")
+            MASK = "<redacted by check-python-installs>" }
+    { out = ""; rest = $0
+      while (match(rest, /[A-Za-z_][A-Za-z0-9_]*=/)) {
+          name = substr(rest, RSTART, RLENGTH - 1)
+          out = out substr(rest, 1, RSTART + RLENGTH - 1)
+          rest = substr(rest, RSTART + RLENGTH)
+          lower = tolower(name); hit = 0
+          for (i in kw) if (index(lower, kw[i])) hit = 1
+          # "pat" only as a whole word: as a substring it is inside PATH.
+          if (lower ~ /(^|_)pat(_|$)/) hit = 1
+          if (!hit) continue
+          if (match(rest, /^[^[:space:]]*/)) len = RLENGTH; else len = 0
+          out = out MASK; rest = substr(rest, len + 1)
+      }
+      print out rest }
+    '
+}
+
+# Run on its own this is the whole report, so its banner is a level-1 heading. Run from
+# inside check-setup-mds.sh it is one section of a longer log, and a second level-1 heading
+# there reads as a second report -- so the caller sets MDS_EMBEDDED and it demotes itself.
+if [ -n "$MDS_EMBEDDED" ]; then
+    echo -e "${ORANGE}### Python installations already on this computer (v2026.08.18)${NC}"
+else
+    echo -e "${ORANGE}# Python installations already on this computer (v2026.08.18)${NC}"
+fi
 echo ''
 echo 'This is a report only. Nothing below has been changed or removed.'
 echo 'uv will work even if you change nothing at all.'
@@ -140,7 +171,10 @@ fi
 echo ''
 
 # --------------------------------------------------------------------------
-echo -e "${ORANGE}## Environment variables${NC}"
+# Named for what it is. `check-setup-mds.sh` has its own `## Environment` section, which
+# says "not recorded" unless the student opts in, and two similarly-named headings in one
+# log read as a contradiction.
+echo -e "${ORANGE}## Python-related environment variables${NC}"
 echo ''
 found_var=''
 for var in PYTHONPATH PYTHONHOME CONDA_PREFIX VIRTUAL_ENV PIP_TARGET PYTHONNOUSERSITE PYTHONSTARTUP; do
@@ -168,11 +202,11 @@ echo ''
 found_config=''
 for f in "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile" "$HOME/.zprofile"; do
     [ -f "$f" ] || continue
-    hits=$(grep -n -E "conda initialize|conda\.sh|pyenv init|PYTHONPATH|PYTHONHOME|Anaconda|miniforge|miniconda" "$f" 2>/dev/null)
+    hits=$(grep -n -E -i "conda initialize|conda\.sh|pyenv init|PYTHONPATH|PYTHONHOME|anaconda|miniforge|miniconda" "$f" 2>/dev/null)
     if [ -n "$hits" ]; then
         found_config='yes'
         echo "  $f"
-        sed 's/^/    /' <<< "$hits"
+        redact_secrets <<< "$hits" | sed 's/^/    /' 
         if grep -q "conda initialize" "$f" 2>/dev/null; then
             note_fixnow "$f contains a 'conda initialize' block. If you remove conda, remove this block too (see the clean-up notes below), otherwise every new terminal will print an error."
         fi

@@ -5,6 +5,9 @@
 # Output of the setup checks
 *.pdf
 *.html
+# ...except the landing page GitHub Pages serves at the root of the site. It is not
+# render output, and the `*.html` rule above had been quietly keeping it out of the repo.
+!index.html
 check-setup-mds.log
 
 # Quarto scratch

@@ -13,6 +13,7 @@ Usage:  python ci/assert-contract.py
 Exit:   0 if the contract holds, 1 otherwise.
 """
 import pathlib
+import re
 import sys
 
 # Windows consoles default to a legacy codepage, and these scripts print the very
@@ -63,9 +64,30 @@ def main() -> int:
     # §5: the routes the guides promise. A Makefile target per route means the
     # promise is executable rather than prose.
     makefile = (root / "Makefile").read_text(encoding="utf-8")
-    for target, route in [("pdf:", "LaTeX PDF"), ("typst:", "Typst PDF"),
-                          ("html:", "HTML"), ("webpdf:", "WebPDF")]:
-        check(f"\n{target}" in makefile, "5", f"{route} route has a make target")
+    for target, route in [("pdf", "LaTeX PDF"), ("typst", "Typst PDF"),
+                          ("html", "HTML"), ("webpdf", "WebPDF")]:
+        # The target has to have prerequisites, not merely exist. `pdf:` with an empty
+        # right-hand side satisfies a substring test and renders nothing.
+        line = next((l for l in makefile.splitlines()
+                     if l.startswith(f"{target}:")), "")
+        prereqs = line.split(":", 1)[1].split("##")[0].strip() if line else ""
+        check(bool(prereqs), "5", f"{route} route has a make target",
+              "the target exists but has no prerequisites" if line else "no such target")
+
+    # The script students actually run renders the fixtures too, and it is not covered by
+    # any other check here. A fixture renamed in the Makefile and not in the script is
+    # invisible until install week -- which is exactly what happened to check-quarto.qmd.
+    script = (root / "check-setup-mds.sh").read_text(encoding="utf-8")
+    referenced = set(re.findall(r"check-[a-z-]+\.(?:qmd|ipynb|Rmd)", script))
+    check(bool(referenced), "5", "the setup check script names some fixtures")
+    for fixture in sorted(referenced):
+        check((root / fixture).exists(), "5",
+              f"check-setup-mds.sh renders {fixture}, and it exists")
+    # Both PDF routes in that script need the logo the fixtures embed; a missing image is
+    # a hard error in LaTeX and in Typst, not a warning.
+    check("mds-logo.png" in script, "5",
+          "check-setup-mds.sh copies mds-logo.png alongside the fixtures",
+          "the fixtures embed it, and every PDF route fails without it")
 
     print()
     if FAIL:

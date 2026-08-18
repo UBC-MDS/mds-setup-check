@@ -43,14 +43,24 @@ make install
 Then render every document by every route:
 
 ```bash
-make all
+make -k all
 ```
 
-and check that the results are actually correct:
+`-k` matters. One route is known not to work — a notebook containing a markdown
+table cannot be exported to PDF by nbconvert — and without `-k` make stops at that
+failure, so the routes after it never run at all.
+
+Then check that the results are actually correct:
 
 ```bash
 make check
 ```
+
+`make check` is the verdict, not make's own exit code: it knows which failures are
+known limitations of the toolchain and which mean something is wrong with the
+install. It also refuses to certify an output that is older than the document it
+came from, so re-running it on a machine that has since broken cannot pass on last
+month's files.
 
 `make` on its own lists every target with a one-line description, so you do not
 have to read this file to remember them.
@@ -66,7 +76,8 @@ have to read this file to remember them.
 | `check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
 | `check-rmarkdown.Rmd` | `uv run quarto render` | Quarto reads `.Rmd` as well, so the same document has two routes |
 
-Every rendered file is named for both the document and the tool that produced it —
+Every rendered file produced by more than one tool is named for both the document and
+the tool —
 `check-rmarkdown-quarto-typst.pdf`, not `check-rmarkdown.pdf`. That is partly so the
 table below can be read, and partly because Quarto compiles `check-rmarkdown.Rmd`
 to an intermediate file named `check-rmarkdown.pdf` before moving it to its final
@@ -81,7 +92,10 @@ that goes wrong often enough not to be worth meeting in week one.
 Every fixture contains the same features, so any difference below is a property of
 the toolchain rather than the document. **This is measured, not asserted** —
 `make matrix` regenerates these tables from the rendered files, and `make check`
-fails if any cell stops being true.
+fails if any cell stops being true. It also fails if an output is older than the document
+it came from, so a table cannot be certified by last month's renders.
+
+**The tables show this machine.** One route differs by platform, marked below.
 
 There is one table per input format, and the **rendered by** column is the reason:
 Quarto reads all three input formats, so it appears in all three tables, while
@@ -125,6 +139,11 @@ nbconvert only reads `.ipynb` and `rmarkdown` only reads `.Rmd`.
 
 <!-- end matrix -->
 
+**Windows: WebPDF does not work.** playwright drives the browser through asyncio
+subprocesses, which raise `NotImplementedError` on Windows in this Python, so that row is
+✅ here and would be ❌ on a Windows machine. The same notebook exports fine on macOS and
+Linux. `make check` knows this and does not fail the Windows run over it.
+
 The input format matters as much as the output one. `check-notebook.ipynb` to a
 LaTeX PDF is the only route of the seventeen that fails outright, and the same
 output format from the same notebook through Quarto is fine — so that failure is a
@@ -140,7 +159,7 @@ Three things are worth knowing before writing an assignment:
   still reports success, so the PDF simply arrives with holes in it. Writing Greek
   as maths — `$\alpha$` rather than `α` — works in every route, and is the right
   spelling in a statistics program anyway. Emoji have no portable form, so a
-  document that needs them wants Typst, HTML or WebPDF.
+  document that needs them wants Typst or HTML — or WebPDF, on a Mac or on Linux.
 - **Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`.** A bare
   `\begin{align}` is a raw LaTeX environment that pandoc passes through
   untranslated, so Typst never sees any maths and renders nothing — silently.

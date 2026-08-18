@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# The shebang matters because this file is also sourced from a shell alias: it uses
+# [[ ]], which is not POSIX, so being re-executed by sh would fail.
 # Detect which file browser string to use
 if [[ "$(uname)" == 'Linux' ]]; then
     browser_cmd='xdg-open .'

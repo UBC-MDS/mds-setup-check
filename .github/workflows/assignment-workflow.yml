@@ -72,7 +72,7 @@ jobs:
       - name: Add the LaTeX packages the install guides list
         run: |
           Rscript -e 'if (!requireNamespace("tinytex", quietly = TRUE)) install.packages("tinytex", repos = "https://cloud.r-project.org")'
-          Rscript -e 'tinytex::tlmgr_install(readLines("ci/tlmgr-packages.txt"))'
+          Rscript -e 'pkgs <- readLines("ci/tlmgr-packages.txt"); tinytex::tlmgr_install(pkgs); missing <- pkgs[!tinytex::check_installed(pkgs)]; if (length(missing)) stop("tlmgr did not install: ", paste(missing, collapse = ", "))'
 
       # ------------------------------------------------------------- the repo --
       # --locked also proves pyproject.toml has not drifted from uv.lock.
@@ -102,6 +102,11 @@ jobs:
           for ext in jupyterlab_git jupytext jupyterlab_spellchecker; do
             grep -q "$ext" /tmp/ext.txt || { echo "missing server extension: $ext"; exit 1; }
           done
+          # The name also appears in jupyter's own "Validating ..." line, so the greps
+          # above pass on a disabled or erroring extension. These do not.
+          if grep -qE "Error loading server extension|Validation failed|^ *X " /tmp/ext.txt; then
+            echo "a server extension is installed but does not load"; exit 1
+          fi
 
       # ------------------------------------------------------------- renders ---
       # -k so that one broken route does not hide the others: which routes work is
@@ -137,8 +142,10 @@ jobs:
       - name: A Python kernel survives uv sync --no-dev
         run: |
           uv sync --no-dev
-          uv run python -c "import otter, pandas"
-          uv run jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
+          # --no-dev on every command too: a bare `uv run` re-syncs the project and puts
+          # the dev group back, so the environment under test would be the full one.
+          uv run --no-dev python -c "import otter, pandas"
+          uv run --no-dev jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
           grep -q python3 /tmp/kernels.txt || { echo "no Python kernel after --no-dev"; exit 1; }
 
       - name: Upload the rendered documents

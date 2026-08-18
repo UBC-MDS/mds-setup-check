@@ -5,8 +5,10 @@ from the Braille Institute, designed so that characters which normally look alik
 do not: `I l 1`, `O 0`, `rn` and `m`. That matters more than usual in a program
 where you read other people's code and your own output all day.
 
-This is **optional**. Nothing in this repository or in the install guides requires
-it, and a document that does not ask for it renders exactly as before. Everything
+Using it is **optional**: a document that does not ask for it renders exactly as
+before. The font itself is already there, though — `atkinson` is in
+`ci/tlmgr-packages.txt` and in the `tlmgr` list all three install guides walk students
+through, so nothing below needs a new installation on the LaTeX side. Everything
 below is a recipe you can copy into an assignment, a course template, or your own
 notes.
 
@@ -52,7 +54,10 @@ a reader gets if they are offline or Google Fonts is blocked.
 This one needs the font installed, because LaTeX embeds it rather than fetching it:
 
 ```bash
-tlmgr install atkinson
+# Only needed if you skipped the tlmgr step in the install guide. Driven through R
+# because TeX Live ships `tlmgr.bat` on Windows and `tlmgr` everywhere else, so the
+# bare command is not found there.
+Rscript -e 'tinytex::tlmgr_install("atkinson")'
 ```
 
 ```yaml

@@ -9,6 +9,14 @@ Run `make all` first, then `python ci/feature-matrix.py`.
 """
 import pathlib, re, html, sys, importlib.util
 
+# This prints tick and cross marks, and on Windows the redirected stdout of
+# `make matrix >> "$GITHUB_STEP_SUMMARY"` is the locale codepage, not UTF-8.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except AttributeError:
+        pass
+
 # The reasons a route is known to fail live in assert-renders.py, which is what
 # gates CI. Importing them keeps the table's footnotes and the gate's verdict
 # from ever disagreeing.
@@ -58,19 +66,9 @@ FEATURES = [
 ]
 
 
-def has_image(path: pathlib.Path) -> bool:
-    """An image is not text, so it needs a different probe per output type."""
-    if path.suffix == ".html":
-        raw = path.read_text(encoding="utf-8", errors="replace")
-        return "mds-logo.png" in raw or "data:image" in raw
-    from pypdf import PdfReader
-    for page in PdfReader(str(path)).pages:
-        res = page.get("/Resources") or {}
-        if "/XObject" in res:
-            xo = res["/XObject"].get_object()
-            if any(o.get_object().get("/Subtype") == "/Image" for o in xo.values()):
-                return True
-    return False
+# The image probe lives in assert-renders.py, so the gate and this table agree
+# on what "the image is there" means.
+has_image = _ar.has_image
 
 
 def text_of(path: pathlib.Path) -> str:
@@ -120,7 +118,12 @@ def main() -> int:
             print("| " + " | ".join(row) + " |")
 
         for name, tool, out in notes:
-            _, why = KNOWN_TO_FAIL.get(name, (None, "this route produced no file."))
+            # is_known, not a bare lookup: the WebPDF limitation is Windows-only, and
+            # printing it as the explanation for a Linux failure would tell an
+            # instructor that a real breakage was expected.
+            _, why = (KNOWN_TO_FAIL[name] if _ar.is_known(name)
+                      else (None, "this route produced no file on this platform, and it "
+                                  "is not a known limitation -- something is broken."))
             print(f"\n{WARN} **{tool} → {out} produces no file at all.** {why}")
     return 0
 

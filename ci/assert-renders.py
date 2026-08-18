@@ -61,24 +61,28 @@ def is_known(name: str) -> bool:
     platforms, _ = entry
     return platforms is None or sys.platform in platforms
 
+QMD_PY, QMD_R = "check-quarto-py.qmd", "check-quarto-r.qmd"
+IPYNB, RMD = "check-notebook.ipynb", "check-rmarkdown.Rmd"
+
+# produced file -> (label, route class, the document it was rendered from)
 ROUTES = {
-    "check-quarto-py-latex.pdf":        ("qmd/py  -> Quarto -> LaTeX",  LATEX),
-    "check-quarto-py-typst.pdf":        ("qmd/py  -> Quarto -> Typst",  TYPST),
-    "check-quarto-py.html":             ("qmd/py  -> Quarto -> HTML",   FULL),
-    "check-quarto-r-latex.pdf":         ("qmd/R   -> Quarto -> LaTeX",  LATEX),
-    "check-quarto-r-typst.pdf":         ("qmd/R   -> Quarto -> Typst",  TYPST),
-    "check-quarto-r.html":              ("qmd/R   -> Quarto -> HTML",   FULL),
-    "check-notebook-quarto-latex.pdf":  ("ipynb   -> Quarto -> LaTeX",  LATEX),
-    "check-notebook-quarto-typst.pdf":  ("ipynb   -> Quarto -> Typst",  TYPST),
-    "check-notebook-quarto.html":       ("ipynb   -> Quarto -> HTML",   FULL),
-    "check-notebook-nbconvert-latex.pdf":               ("ipynb   -> nbconvert -> LaTeX", LATEX),
-    "check-notebook-nbconvert.html":              ("ipynb   -> nbconvert -> HTML",  FULL),
-    "check-notebook-nbconvert-web.pdf":           ("ipynb   -> nbconvert -> WebPDF", FULL),
-    "check-rmarkdown-quarto-latex.pdf": ("Rmd     -> Quarto -> LaTeX",  LATEX),
-    "check-rmarkdown-quarto-typst.pdf": ("Rmd     -> Quarto -> Typst",  TYPST),
-    "check-rmarkdown-quarto.html":      ("Rmd     -> Quarto -> HTML",   FULL),
-    "check-rmarkdown-rmarkdown-latex.pdf":              ("Rmd     -> rmarkdown -> LaTeX", LATEX),
-    "check-rmarkdown-rmarkdown.html":             ("Rmd     -> rmarkdown -> HTML",  FULL),
+    "check-quarto-py-latex.pdf":          ("qmd/py  -> Quarto -> LaTeX",     LATEX, QMD_PY),
+    "check-quarto-py-typst.pdf":          ("qmd/py  -> Quarto -> Typst",     TYPST, QMD_PY),
+    "check-quarto-py.html":               ("qmd/py  -> Quarto -> HTML",      FULL,  QMD_PY),
+    "check-quarto-r-latex.pdf":           ("qmd/R   -> Quarto -> LaTeX",     LATEX, QMD_R),
+    "check-quarto-r-typst.pdf":           ("qmd/R   -> Quarto -> Typst",     TYPST, QMD_R),
+    "check-quarto-r.html":                ("qmd/R   -> Quarto -> HTML",      FULL,  QMD_R),
+    "check-notebook-quarto-latex.pdf":    ("ipynb   -> Quarto -> LaTeX",     LATEX, IPYNB),
+    "check-notebook-quarto-typst.pdf":    ("ipynb   -> Quarto -> Typst",     TYPST, IPYNB),
+    "check-notebook-quarto.html":         ("ipynb   -> Quarto -> HTML",      FULL,  IPYNB),
+    "check-notebook-nbconvert-latex.pdf": ("ipynb   -> nbconvert -> LaTeX",  LATEX, IPYNB),
+    "check-notebook-nbconvert.html":      ("ipynb   -> nbconvert -> HTML",   FULL,  IPYNB),
+    "check-notebook-nbconvert-web.pdf":   ("ipynb   -> nbconvert -> WebPDF", FULL,  IPYNB),
+    "check-rmarkdown-quarto-latex.pdf":   ("Rmd     -> Quarto -> LaTeX",     LATEX, RMD),
+    "check-rmarkdown-quarto-typst.pdf":   ("Rmd     -> Quarto -> Typst",     TYPST, RMD),
+    "check-rmarkdown-quarto.html":        ("Rmd     -> Quarto -> HTML",      FULL,  RMD),
+    "check-rmarkdown-rmarkdown-latex.pdf":("Rmd     -> rmarkdown -> LaTeX",  LATEX, RMD),
+    "check-rmarkdown-rmarkdown.html":     ("Rmd     -> rmarkdown -> HTML",   FULL,  RMD),
 }
 
 # (label, needles, supported-by). A check passes if ANY needle is present, which
@@ -89,12 +93,35 @@ CHECKS = [
     ("degree sign",    ["°"],               {LATEX, TYPST, FULL}),
     ("en dash",        ["–"],               {LATEX, TYPST, FULL}),
     ("curly quotes",   ["“", "”"],          {LATEX, TYPST, FULL}),
-    ("inline maths",   ["𝛽", "β", "unbiased"], {LATEX, TYPST, FULL}),
+    # OLS appears in the fixtures only inside the inline equation, so this check fails
+    # if the maths stops being typeset. It used to accept "unbiased", which is the prose
+    # next to the equation, and so passed whatever happened to the maths.
+    ("inline maths",   ["OLS"],             {LATEX, TYPST, FULL}),
     ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}),
     ("aligned eqns",   ["Var"],             {LATEX, TYPST, FULL}),
     ("literal Greek",  ["α"],               {TYPST, FULL}),
     ("emoji",          ["✅", "📊"],         {TYPST, FULL}),
+    # The four the README's table publishes and the gate used to leave ungated. An
+    # unchecked column is a column that can quietly stop being true.
+    ("middot",         ["·"],               {LATEX, TYPST, FULL}),
+    ("numbered eqn",   ["𝜎", "σ"],          {LATEX, TYPST, FULL}),
+    ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}),
 ]
+
+# The image is not text, so it needs a probe of its own rather than a needle.
+IMAGE_ROUTES = {LATEX, TYPST, FULL}
+
+
+def has_image(path: pathlib.Path) -> bool:
+    if path.suffix == ".html":
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        return "mds-logo.png" in raw or "data:image" in raw
+    from pypdf import PdfReader
+    for page in PdfReader(str(path)).pages:
+        resources = page.get("/Resources") or {}
+        if "/XObject" in resources:
+            return True
+    return False
 
 
 def text_of(path: pathlib.Path) -> str:
@@ -108,10 +135,17 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
-    missing, broken, ok = [], [], []
+    missing, broken, ok, stale = [], [], [], []
 
-    for name, (label, kind) in ROUTES.items():
+    for name, (label, kind, source) in ROUTES.items():
         path = pathlib.Path(name)
+        # An output older than the document it came from is last month's answer. make
+        # rebuilds nothing when the outputs are newer than their sources, so without this
+        # a re-run on a since-broken machine re-reads the old files and reports success.
+        if path.exists() and path.stat().st_mtime < pathlib.Path(source).stat().st_mtime:
+            stale.append((label, name, source))
+            print(f"  STALE    {label:<24} {name} is older than {source}")
+            continue
         if not path.exists():
             if is_known(name):
                 print(f"  known    {label:<24} does not render -- see KNOWN_TO_FAIL")
@@ -140,8 +174,13 @@ def main() -> int:
                 problems.append(
                     f"{desc} ({needles[0]!r}) now renders -- this route was not "
                     f"expected to support it; update ci/assert-renders.py")
-        if kind in (TYPST, FULL) and "\ufffd" in body:
-            problems.append("contains U+FFFD, so something was dropped")
+        # Engines differ in what they leave behind for a glyph they cannot set:
+        # lualatex extracts as U+FFFD, xelatex as U+FFFF.
+        if kind in IMAGE_ROUTES and not has_image(path):
+            problems.append("the embedded image is missing")
+
+        if kind in (TYPST, FULL) and any(c in body for c in ("\ufffd", "\ufffe", "\uffff")):
+            problems.append("contains a replacement character, so something was dropped")
 
         if problems:
             broken.append(f"{name}: " + "; ".join(problems))
@@ -156,6 +195,14 @@ def main() -> int:
     if len(missing) == total:
         print("Nothing has been rendered yet. Run `make all` first.")
         return 1
+
+    if stale:
+        print(f"{len(stale)} of {total} outputs are older than the document they came from:")
+        for label, name, source in stale:
+            print(f"  - {label}  ({name} predates {source})")
+        print("  These were rendered by an earlier run and prove nothing about this one.")
+        print("  Run `make clean` and then `make -k all` to rebuild them.")
+        print()
 
     if missing:
         print(f"{len(missing)} of {total} routes produced no output at all:")
@@ -172,7 +219,7 @@ def main() -> int:
             print(f"  - {b}")
         print()
 
-    if missing or broken:
+    if missing or broken or stale:
         print(f"{len(ok)} of {total} routes are fully correct.")
         return 1
 

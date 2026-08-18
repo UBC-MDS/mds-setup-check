@@ -170,26 +170,31 @@ document with no Python chunks, and `uv` itself.
 
 ## 5. Producing PDFs
 
-Four routes exist. Students have all of them set up.
+Five routes exist. Students have all of them set up, and Quarto reads all three input
+formats — `.qmd`, `.ipynb` and `.Rmd` — so it can stand in for either of the others.
 
 | route | engine | when |
 | --- | --- | --- |
 | `uv run quarto render <file> --to pdf` | lualatex | **Preferred.** Handles `.ipynb`, `.qmd` and `.Rmd` |
 | `uv run quarto render <file> --to typst` | Typst | When the document contains emoji or Greek letters |
-| JupyterLab `File > Save and Export Notebook As... > PDF` | xelatex, via nbconvert | Familiar in-Lab route |
-| JupyterLab `... > WebPDF` | headless Chromium | No LaTeX at all; also handles emoji |
+| `Rscript -e 'rmarkdown::render("f.Rmd")'` | xelatex, via knitr | An `.Rmd` rendered by R itself |
+| JupyterLab `File > Save and Export Notebook As... > PDF` | xelatex, via nbconvert | Familiar in-Lab route, but see the markdown-table limitation below |
+| JupyterLab `... > WebPDF` | headless Chromium | No LaTeX at all; also handles emoji. **Not available on Windows** |
 
 **LaTeX cannot typeset emoji or literal Greek letters, and does not say so.** This
 is the one to know before writing an assignment. Every LaTeX route above replaces
 those characters with nothing and still reports success, so a student gets a clean
-looking PDF with content missing. Measured on the fixtures in this repository:
+looking PDF with content missing. Every column below except `raw \begin{align}` is
+measured on the fixtures in this repository by `ci/feature-matrix.py`; that one column is
+reasoned from how pandoc treats raw LaTeX, because no fixture contains a bare `align`
+block on purpose:
 
 | | accents, dashes | inline, display, `equation` | `$$\begin{aligned}$$` | raw `\begin{align}` | Greek, emoji | images |
 | --- | --- | --- | --- | --- | --- | --- |
-| LaTeX, all three routes | yes | yes | yes | yes | **no** | yes |
+| LaTeX, via Quarto, nbconvert or rmarkdown | yes | yes | yes | yes | **no** | yes |
 | Typst | yes | yes | yes | **no** | yes | yes |
 | HTML | yes | yes | yes | yes | yes | yes |
-| WebPDF | yes | yes | yes | yes | yes | yes |
+| WebPDF (not on Windows) | yes | yes | yes | yes | yes | yes |
 
 **A notebook containing a markdown table cannot be exported to PDF from
 JupyterLab.** nbconvert's LaTeX template writes `\LTcaptype{none}`, which TeX Live
@@ -205,7 +210,7 @@ through untranslated, so Typst never sees it and renders nothing, silently. Insi
 
 That leaves one real split: **LaTeX cannot do Greek or emoji.** Written as maths
 (`$\alpha$`) Greek works everywhere, so in practice only emoji force the choice —
-and for those, use Typst, HTML or WebPDF.
+and for those, use Typst or HTML — or WebPDF, on a Mac or on Linux.
 
 Mathematics is unaffected: `$\alpha$` typesets correctly everywhere, because maths
 is set from a different font. It is only literal `α` in prose that disappears. So
@@ -337,8 +342,8 @@ error from uv itself.
 
 | what they see | what it means |
 | --- | --- |
-| `error: No `pyproject.toml` found in current directory or any parent directory` | `uv sync` was run outside a project folder — `cd` into the repo |
-| `error: Failed to spawn: `jupyter`` | `uv run` outside a project folder, or the repo does not declare `jupyterlab` |
+| ``error: No `pyproject.toml` found in current directory or any parent directory`` | `uv sync` was run outside a project folder — `cd` into the repo |
+| ``error: Failed to spawn: `jupyter` `` | `uv run` outside a project folder, or the repo does not declare `jupyterlab` |
 | `ModuleNotFoundError: No module named 'pandas'` | run without `uv run`, or run in the wrong folder, or the package is not declared |
 | `nbconvert.utils.pandoc.PandocMissing` | Quarto's pandoc is not on `PATH`; see §5 |
 | `Failed to spawn: 'quarto'` / Quarto cannot find a kernel | missing `uv run`, especially on Windows |
@@ -363,6 +368,8 @@ error from uv itself.
   ```bash
   cd <hw-repo>
   uv sync
+  # IRkernel itself is installed nowhere by the MDS setup, so it comes first
+  uv run R -e 'install.packages("IRkernel", repos = "https://packagemanager.posit.co/cran/latest")'
   uv run R -e "IRkernel::installspec()"
   ```
 

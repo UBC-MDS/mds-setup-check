@@ -27,7 +27,7 @@ they were identified.
 | Script relocation | all three curled scripts live here, served from `ubc-mds.github.io/mds-setup-check/` — this document recommended **against** it and was wrong; see the decision record |
 | pandoc | installed directly from pandoc.org on all three OSes, rather than borrowed from Quarto through a `PATH` edit |
 | pandoc version check | raised to >= 3.10, and made a real version test rather than a substring match |
-| `Makefile` | `commands` / `install` / `all` / `check` / `clean`, self-documenting, Git Bash compatible |
+| `Makefile` | `commands` / `install` / `all` / `check` / `matrix` / `clean`, self-documenting, Git Bash compatible |
 | Glob expansion in `sys_progs` | fixed — every array *element* is quoted now. Verified by negative control: with `R=4.txt` in the working directory the old form produced `R=4.txt` as the version test, the new form produces `R=4.*` |
 | **`assignment-workflow.yml`** | **built and green on all three OSes** — the first workflow, described below |
 | Fonts | `atkinson` added to the `tlmgr` list in all three guides; the system font is optional and documented in `using-atkinson-hyperlegible.md` |
@@ -44,6 +44,40 @@ they were identified.
 | `--include-verbatim` | `link-check.yml` in the website repo | nothing — one flag |
 | Quarto not executing `.ipynb` by default | this repo | a fixture whose stored output deliberately disagrees with its source; the guide documents the trap but nothing tests it |
 | Version-regex anchoring for the other ten | `check-setup-mds.sh` | deliberately deferred; see the note on why it is not a 30-minute job |
+
+### Found by the council review of 2026-08-18
+
+Four seats reviewed the gate, the documents, the two repositories against each other, and
+the three shell scripts. What they found is fixed in the same branch, except the items
+listed as open below. Two findings are worth keeping visible because they are the *class*
+of defect this project exists to prevent:
+
+- **The fixture rename never reached `check-setup-mds.sh`.** `check-quarto.qmd` became
+  `check-quarto-py.qmd` in the Makefile, the README and both CI scripts, and the script
+  students actually run kept copying the old name — with `2> /dev/null` on the `cp`, so it
+  failed silently and both Quarto routes reported "could not be tested" forever. Nothing
+  in CI runs that script, which is why it survived. `ci/assert-contract.py` now asserts
+  that every fixture the script names exists.
+- **The fixtures embed `mds-logo.png` and the script never copied it.** A missing image is
+  a hard error in LaTeX and in Typst, not a warning, so every PDF route in the student's
+  check would have failed on a machine that was working perfectly. Verified by rendering a
+  scratch copy without the file.
+
+Both are the same shape: a change made in the tested half of the repository, silently
+breaking the untested half.
+
+Still open from that review, in rough order of value:
+
+| item | where | why not now |
+|---|---|---|
+| CI never runs `check-setup-mds.sh` end to end | this repo | needs a job that fakes a student machine; the contract check covers the rename hole in the meantime |
+| The README matrix block is not diff-verified against `make matrix` | this repo | a CI step that regenerates and diffs it; small, but it needs a decision about which platform's table is canonical |
+| HTML maths assertions test source survival, not rendering | `ci/assert-renders.py` | asserting on MathJax output means parsing what the browser would do; the PDF routes already gate the real typesetting |
+| Version windows will expire | `check-setup-mds.sh` | `docker=2[89].*` breaks the day Engine ships 30.x; `positron=2026\..*` and `rstudio=2026\..*` break in January; `uv=0\.[0-9]+` breaks at 1.0. Same regex-anchoring session as the rest |
+| PostgreSQL: the guides contradict each other | website repo | macOS and Windows say "install 17 so everyone matches"; Ubuntu's `apt install postgresql` gives 16 or 18 depending on release. The check accepts all three, so the sentence is what is wrong |
+| Ubuntu has no Make section | website repo | `make` arrives only as a dependency of `r-base-dev`; the check requires it and the sample output shows it passing |
+| The KCDS toolbox filter matches nothing the script emits any more | website repo | it greps for `conda`, `code`, `pyppeteer=`, `jupyter-book=`; tracked separately with the script-move issue |
+| Sample outputs in all three guides are a version behind | website repo | they predate the `## Document export` section, the two Quarto routes and the environment prompt |
 
 ## Open work, in order
 
@@ -120,7 +154,7 @@ if it fails.
 | 3 | `otter-grader` is a real dependency | `uv run python -c "import otter"` |
 | 3 | `package = false`, `.venv` gitignored, `uv.lock` committed | static checks on the repo |
 | 4 | every Python command starts with `uv` | `uv run python -c "import otter, pandas"` succeeds |
-| 5 | Quarto route, **preferred** | `uv run quarto render <file> --to pdf/typst/html` for `.qmd`, `.ipynb` and `.Rmd` — nine of the seventeen routes |
+| 5 | Quarto route, **preferred** | `uv run quarto render <file> --to pdf/typst/html` for `.qmd`, `.ipynb` and `.Rmd` — twelve of the seventeen routes |
 | 5 | nbconvert LaTeX route | `uv run jupyter nbconvert --to pdf` |
 | 5 | WebPDF route | `uv run playwright install chromium`, then `--to webpdf` |
 | 5 | rmarkdown route | `rmarkdown::render(..., output_file = ...)`, PDF and HTML |
@@ -140,7 +174,7 @@ uv run jupyter server extension list   # must list jupyterlab_git, jupytext, jup
 That validates §3's reasoning without a server, and it is the check that would catch someone
 "tidying" `jupyterlab` into a dev dependency.
 
-**PDF assertions check content, not exit codes.** All three LaTeX routes currently exit 0
+**PDF assertions check content, not exit codes.** All six LaTeX routes currently exit 0
 while destroying `α β γ`, so an exit-code check passes on a broken render. Assert on
 extracted text, using `pypdf` rather than `pdftotext` — poppler is absent from the macOS and
 Windows runners. Assert against today's known-good characters (`Montréal`, `naïve`, `°C`, the
@@ -150,9 +184,11 @@ job that is red on day one is ignored by the end of the week. A route that is kn
 outright carries its reason in `KNOWN_TO_FAIL`, which is one dictionary and is also what the
 README's footnotes are generated from, so the gate and the documentation cannot disagree.
 
-**A gap worth recording rather than fixing here:** there is no dev-dependency group in this
-repo, so the `uv sync --no-dev` trap that §7 warns about cannot be *fully* demonstrated in
-the repository that documents it. The job can still assert a kernel survives `--no-dev`.
+**Closed since this was written.** `pyproject.toml` now has a `dev` group, so the
+repository does have a real difference between `uv sync` and `uv sync --no-dev`, and the
+workflow asserts a Python kernel survives the second. The assertion has to pass `--no-dev`
+to every `uv run` as well: a bare `uv run` re-syncs the project and quietly puts the dev
+group back, so the earlier form of this step was testing the full environment.
 
 ### Hosting: one repo, and most of the bridge is gone
 
@@ -466,7 +502,7 @@ recipe (hand it to the teaching team, don't fix it here).
   skips them — no source builds, no gfortran problem. What's real is the scary
   `The project is out-of-sync` warning on every student machine, and `README.md:114-116`
   being false. Fix it, but it isn't top-three.
-- **`README.md:121-122` is CORRECT, not "disproven".** `renv::status()` prints *"The lockfile
+- **`README.md`'s renv claim is CORRECT, not "disproven".** `renv::status()` prints *"The lockfile
   was generated with R 4.6.1, but you're using R 4.5.3."* An earlier round recorded the
   opposite and this document repeated it.
 
@@ -475,10 +511,10 @@ recipe (hand it to the teaching team, don't fix it here).
 | Deliverable | Done when |
 |---|---|
 | **Settle the TinyTeX-1 font question** — install the default bundle in a clean container, render one fixture | Either the Greek renders (font fix unnecessary for students; CI assertion still ships) or it does not (22nd `tlmgr` package confirmed necessary) |
-| **`fixtures.yml`** — `setup-r` pinned 4.6.x, Quarto at the documented version, **LaTeX the doc's way** (`tinytex::install_tinytex()` + the `tlmgr` list lifted to `ci/tlmgr-packages.txt`), then `uv sync --locked` → `make r-packages` → `make` → `playwright install chromium` → `make webpdf`. Matrix ubuntu/macos/windows, **plus baseline preflight** on all three. `on: [push, pull_request, schedule]`; `concurrency` with `cancel-in-progress: true` | Green on all three OSes, where green means **`ci/assert-pdf-text.py` passes**, not that PDFs exist. Two negative controls: break a `tlmgr` package name → red; revert the font fix → red. `check-notebook-web.pdf` is a free positive control and must stay green throughout |
+| **`assignment-workflow.yml`** (built; this row is the plan it was built from) — `setup-r` pinned 4.6.x, Quarto at the documented version, **LaTeX the doc's way** (`tinytex::install_tinytex()` + the `tlmgr` list lifted to `ci/tlmgr-packages.txt`), then `uv sync --locked` → `renv::restore()` → `make -k all` → `playwright install chromium`. Matrix ubuntu/macos/windows, **plus baseline preflight** on all three. `on: [push, pull_request, schedule]`; `concurrency` with `cancel-in-progress: true` | Green on all three OSes, where green means **`ci/assert-renders.py` passes**, not that PDFs exist. Two negative controls: break a `tlmgr` package name → red; revert the font fix → red. `check-notebook-nbconvert-web.pdf` is a free positive control and must stay green throughout |
 | **`r-stack.yml`** — nightly, ubuntu + macos; runs the documented R blocks verbatim: `install.packages('pak')`, the 12-entry `pak::pkg_install(...)` incl. `ucbds-infra/ottr` and `ttimbers/canlang`, then `StanHeaders`/`rstan` from r-universe. **Skip `example(stan_model)`** (20-40 min, checked by nothing). `${{ github.token }}` for GitHub rate limits | All 12 install without error; `installed.packages()` contains all ten of the `r_pkgs` list in `check-setup-mds.sh`'s `r_pkgs`. Negative control: add a nonexistent package → red |
 
-The `ci/tlmgr-packages.txt` count is **21 today, 22 if the font fix proves necessary** — do
+The `ci/tlmgr-packages.txt` count is **22**, the 22nd being `atkinson` for legibility; the `newcomputermodern` font fix was closed rather than done — do
 not hard-code 21 before the first row of this table is answered.
 
 Note the push trigger is kept because this repo *will* change through August (fixtures,
@@ -489,7 +525,7 @@ Note the push trigger is kept because this repo *will* change through August (fi
 | Deliverable | Done when |
 |---|---|
 | **`ci/install-ubuntu.sh`** written fresh (draft census above as the estimate), with a header naming the doc sections it mirrors and the four markers | Reads top-to-bottom as something you would hand a student; every `# CI-EXTRA` line has a one-line justification |
-| **`install-check.yml`** — container job + the 5-minute non-container job; `timeout-minutes: 300` on the container job only; `concurrency` with **`cancel-in-progress: false`** (Aug 17-28 is when pushes are most frequent, and a 2.5-4h run must be allowed to finish); `if: always()` on uploads; every emitted command wrapped in `timeout 900`; **log stripped of the `## Environmental variables` section before upload** | `check-setup-mds.sh` produces an accepted-exception list short enough to read in full, starting with the `hostnamectl` case. Negative control: break a documented command → red |
+| **`install-check.yml`** — container job + the 5-minute non-container job; `timeout-minutes: 300` on the container job only; `concurrency` with **`cancel-in-progress: false`** (Aug 17-28 is when pushes are most frequent, and a 2.5-4h run must be allowed to finish); `if: always()` on uploads; every emitted command wrapped in `timeout 900`; **log stripped of the `## Environment` section before upload** | `check-setup-mds.sh` produces an accepted-exception list short enough to read in full, starting with the `hostnamectl` case. Negative control: break a documented command → red |
 | **Settle: does `rstudio --version` work headless?** | Answered. If no, RStudio is a permanent accepted exception and `rstudio="2026\..*"` is exercised by nothing on Linux |
 
 ### Week 3 (Aug 31-Sep 4) — breadth and the audit
@@ -554,8 +590,6 @@ None of these are CI work and none currently has an owner. Recommend filing in Y
 | **`mds-help.sh` is stale and self-installing** | curled from `ubuntu:1118` into every student's shell; live copy is still the conda version | Student-facing |
 | **`mds-help.sh` documents 7 of 12 aliases** | omits `rm`, `mv`, `cp`, `mkdir`, and **`alias grep='grep -i'`** | `grep -i` silently changes DSCI 511 exercise answers, in the card students consult |
 | **IRkernel recipe cannot work** | `assignment-workflow-uv.md:320-324` runs `IRkernel::installspec()`; IRkernel is installed nowhere, and the `r_pkgs` list in `check-setup-mds.sh` says its absence is *deliberate* | Already handed to the teaching team |
-| **`renv/settings.json` is `snapshot.type: "all"`** | 41 packages incl. 15 base/recommended; `make` prints `The project is out-of-sync` on every student machine | Install-week scare in a step that already scares people. Fix: `implicit` + regenerate |
-| **`README.md` has three false claims** | the script (LaTeX fonts — false), the script (renv.lock contents — false), the script (renv minor-version warning — **disproven** by test, not merely unverified) | — |
 | **`mac:769`** | undocumented `sudo chown -R $(whoami) .config` in an inline code span, **relative path, no `cd`** | Recursive chown from an unknown working directory |
 | **PG-1: the "same version" rationale is false** | `mac:989`/`win:1189` mandate 17 to keep the cohort aligned; `ubu:1005-1007` gives 16 or 18; checker accepts all three | mac/Windows students downgrade for no benefit. **Policy call needed** |
 | **LOG-1: the sensitive-info warning is missing from 2 of 3 sample outputs** | present `ubu:1229`; truncated at `mac:1251-1253`, `win:1435-1437` | Two-thirds of the cohort never sees it, right before uploading the log |

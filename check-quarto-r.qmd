@@ -48,7 +48,7 @@ Assignments include plots and images, which have to survive the render too.
 
 ## Mathematics
 
-Inline: the estimator $\hat{\beta} = (X^{\top}X)^{-1}X^{\top}y$ is unbiased.
+Inline: the estimator $\hat{\beta}_{\mathrm{OLS}} = (X^{\top}X)^{-1}X^{\top}y$ is unbiased.
 
 A display equation:
 
