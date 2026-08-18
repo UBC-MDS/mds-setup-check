@@ -21,7 +21,7 @@ they were identified.
 
 | | |
 |---|---|
-| Install-guide branch merged | live site serves `v2026.08.17` |
+| Install-guide branch merged | live site serves `v2026.08.18` |
 | 19 mistagged code fences | fixed; three were rendering visibly wrong on the live site |
 | The `env` secret dump | now an interactive y/N prompt defaulting to no |
 | Script relocation | all three curled scripts live here, served from `ubc-mds.github.io/mds-setup-check/` — this document recommended **against** it and was wrong; see the decision record |
@@ -353,8 +353,13 @@ postgresql.org) cover most gated components — **~300 lines plus a ~120-line ma
 
 ### What this CI does not tell you
 
-Printed in every job summary, because a green badge read as "the docs work" is worse than no
-badge:
+**Not printed in any job summary** -- that is still the Week 3 deliverable listed below,
+and this section claimed it as done. The list now lives, in a form matched to what was
+actually built, under "How this is tested, and what a green build does not prove" in
+`README.md`, which is where an instructor will look for it. Keeping a second copy here
+that describes jobs which do not exist is how it went stale in the first place.
+
+The original list, for the record, covering the design as proposed rather than as built:
 
 - Windows/macOS runners pre-satisfy R, PostgreSQL, Docker and git (mitigated by the
   preflight, not eliminated).
