@@ -130,6 +130,17 @@ jobs:
           echo "## What rendered on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
           make matrix >> "$GITHUB_STEP_SUMMARY" || true
 
+      # Section 7 of the guide warns that an autograding image built with
+      # `uv sync --no-dev` still needs a Python kernel, which is why ipykernel is
+      # named explicitly rather than left to arrive with jupyterlab. This runs last
+      # because it removes the dev group, and pypdf lives there.
+      - name: A Python kernel survives uv sync --no-dev
+        run: |
+          uv sync --no-dev
+          uv run python -c "import otter, pandas"
+          uv run jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
+          grep -q python3 /tmp/kernels.txt || { echo "no Python kernel after --no-dev"; exit 1; }
+
       - name: Upload the rendered documents
         if: always()
         uses: actions/upload-artifact@v4

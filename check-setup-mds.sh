@@ -147,8 +147,12 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     fi
 
     # Remove rstudio and psql from the programs to be tested using the normal --version test
-    sys_progs=(R=4.* uv="0\.[0-9]+\.[0-9]+" bash=3.* git=2.* make=3.* latex=3.* tlmgr=revision.* \
-        docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
+    # Every element is quoted. Unquoted, `R=4.*` and `docker=2[89].*` are globs:
+    # bash expands them against the working directory as the array is built, so a
+    # student with a file called `R=4.txt` sitting there silently gets that
+    # filename used as the version test instead of the pattern.
+    sys_progs=("R=4.*" "uv=0\.[0-9]+\.[0-9]+" "bash=3.*" "git=2.*" "make=3.*" "latex=3.*" "tlmgr=revision.*" \
+        "docker=2[89].*" "positron=2026\..*" "quarto=1.*" pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
 # psql and Rstudio are not on PATH in windows
 elif [[ "$OSTYPE" == 'msys' ]]; then
 
@@ -186,12 +190,12 @@ elif [[ "$OSTYPE" == 'msys' ]]; then
         echo "OK        "$(tlmgr.bat --version | head -1) >> check-setup-mds.log
     fi
     # Remove rstudio from the programs to be tested using the normal --version test
-    sys_progs=(R=4.* uv="0\.[0-9]+\.[0-9]+" bash=5.* git=2.* make=4.* latex=3.* \
-        docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
+    sys_progs=("R=4.*" "uv=0\.[0-9]+\.[0-9]+" "bash=5.*" "git=2.*" "make=4.*" "latex=3.*" \
+        "docker=2[89].*" "positron=2026\..*" "quarto=1.*" pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
 else
     # For Linux everything is sane and consistent so all packages can be tested the same way
-    sys_progs=(psql="(16|17|18).*" rstudio="2026\..*" R=4.* uv="0\.[0-9]+\.[0-9]+" bash=5.* \
-        git=2.* make=4.* latex=3.* tlmgr=revision.* docker=2[89].* positron="2026\..*" quarto=1.* pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
+    sys_progs=("psql=(16|17|18).*" "rstudio=2026\..*" "R=4.*" "uv=0\.[0-9]+\.[0-9]+" "bash=5.*" \
+        "git=2.*" "make=4.*" "latex=3.*" "tlmgr=revision.*" "docker=2[89].*" "positron=2026\..*" "quarto=1.*" pandoc="(^|[[:space:]])(3\.(1[0-9]|[2-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)(\.[0-9]+)*")
     # Note that a single equal sign is used throughout for `<name>=<version regex>`,
     # for system programs, Python packages and R packages alike.
     # There is deliberately no bare `python` here: MDS installs Python per project
