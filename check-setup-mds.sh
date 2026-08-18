@@ -280,6 +280,10 @@ mds_project="$HOME/mds-setup-check"
 # Students never set it; the default is the only address they are ever given, and it is
 # the same one the install guides publish.
 mds_project_url="${MDS_PROJECT_URL:-https://github.com/UBC-MDS/mds-setup-check.git}"
+# Where the other student-facing scripts are served from, and the URL quoted back to a
+# student who ran this one in a way that could not prompt. Overridable so that both can be
+# exercised against a pull request preview deploy; students never need to set it.
+MDS_BASE_URL="${MDS_BASE_URL:-https://ubc-mds.github.io/mds-setup-check}"
 mds_project_ok=''
 
 # Where playwright keeps the browsers it downloads. Needed in two places: the setup below
@@ -376,7 +380,17 @@ elif [ -n "$mds_project_preexisting" ]; then
 elif ! [ -f "$mds_project/pyproject.toml" ] || ! [ -d "$mds_project/.venv" ]; then
     echo "The MDS check project at $mds_project is not set up," >> check-setup-mds.log
     echo "so the Python package and document conversion checks were skipped." >> check-setup-mds.log
-    echo "Run this script again and answer yes when it offers to set the project up." >> check-setup-mds.log
+    # Which advice to give depends on whether the question was ever asked. Piping the
+    # script into bash leaves stdin a pipe, the [ -t 0 ] guard skips both prompts, and
+    # the answer stays at its safe default of no -- so telling that student to "answer
+    # yes next time" names an offer they were never made and cannot act on.
+    if [ -t 0 ]; then
+        echo "Run this script again and answer yes when it offers to set the project up." >> check-setup-mds.log
+    else
+        echo "This script had no terminal attached, so it could not ask you anything." >> check-setup-mds.log
+        echo "That happens when it is run as \`curl ... | bash\`. Run it this way instead:" >> check-setup-mds.log
+        echo "    bash <(curl -Ssf $MDS_BASE_URL/check-setup-mds.sh)" >> check-setup-mds.log
+    fi
 else
     mds_project_ok='yes'
     # There is no machine-wide `python` to check, so the interpreter is checked from
@@ -454,9 +468,9 @@ fi
 # fixtures deliberately contain markdown, a code chunk and non-ASCII characters, so that
 # pandoc, the kernel and the document fonts are all genuinely tested.
 #
-# There are four ways to reach a PDF and they fail independently. Three of them go through
+# There are five ways to reach a PDF and they fail independently. Three of them go through
 # LaTeX; Quarto's Typst engine and nbconvert's WebPDF do not, so a broken LaTeX install
-# cannot take all four down at once. A student needs only one that works, so a route that
+# cannot take all five down at once. A student needs only one that works, so a route that
 # fails is reported as FAILED rather than MISSING, and a MISSING is written at the end only
 # when every route failed. That keeps MISSING meaning "you have to fix this before class".
 echo "" >> check-setup-mds.log
@@ -484,7 +498,8 @@ else
     # An interrupted earlier run leaves these behind, and the report at the end appends
     # whatever it finds. Clearing them first keeps this run's errors this run's.
     rm -f quarto-typst-error.log quarto-pdf-error.log jupyter-pdf-error.log \
-          jupyter-webpdf-error.log jupyter-html-error.log
+          jupyter-webpdf-error.log jupyter-html-error.log \
+          rmarkdown-pdf-error.log rmarkdown-html-error.log
     scratch=$(mktemp -d)
     # Not silenced: if a fixture is missing or has been renamed, the copy failing
     # is the earliest and clearest signal of it. The per-route guards below still
@@ -561,7 +576,7 @@ else
     rm -rf "$scratch"
 fi
 
-# rmarkdown PDF and HTML generation, the fourth PDF route and the second HTML one.
+# rmarkdown PDF and HTML generation, the fifth PDF route and the third HTML one.
 if ! [ -x "$(command -v R)" ]; then  # Check that R exists as an executable program
     pdf_fail 'rmarkdown PDF-generation could not be tested since R was not found.'
     echo "Please install 'R' before testing PDF and HTML generation." >> check-setup-mds.log
@@ -611,17 +626,25 @@ R.version$version.string
 MDS_RMD_FIXTURE
     fi
     if [ -n "$r_scratch" ]; then
-        pandoc_version=$(cd "$r_scratch" && Rscript -e "cat(paste($find_pandoc_command[['version']]))")
-        if ! (cd "$r_scratch" && Rscript -e "$find_pandoc_command;rmarkdown::render('mds-knit-pdf-test.Rmd', output_format = 'pdf_document')") &> /dev/null; then
-            pdf_fail 'rmarkdown PDF-generation failed. Check that quarto, rmarkdown, and latex are marked OK above.'
+        # stderr captured rather than discarded, on both of these and on the probe above.
+        # Every other route in this section writes an error log that the report prints;
+        # these two were the exception, so a student whose R Markdown route broke got a
+        # verdict with no evidence, and R's own "there is no package called 'rmarkdown'"
+        # printed itself live, mid-run, attached to no section.
+        # The redirect wraps the subshell rather than sitting after the Rscript, so the
+        # error log is opened in the current directory beside the others. Inside the
+        # `cd` it would be written into the scratch directory and deleted with it.
+        pandoc_version=$( (cd "$r_scratch" && Rscript -e "cat(paste($find_pandoc_command[['version']]))") 2> rmarkdown-pdf-error.log )
+        if ! (cd "$r_scratch" && Rscript -e "$find_pandoc_command;rmarkdown::render('mds-knit-pdf-test.Rmd', output_format = 'pdf_document')") >> rmarkdown-pdf-error.log 2>&1; then
+            pdf_fail 'rmarkdown PDF-generation failed. Check that quarto, rmarkdown, and latex are marked OK above, then read the detailed error message below.'
             if [ "$pandoc_version" = "0" ]; then
                 echo "It seems that RMarkdown cannot find pandoc. The install guides have you install it from pandoc.org; check that 'pandoc --version' works and reports 3.10 or newer." >> check-setup-mds.log
             fi
         else
             pdf_pass 'rmarkdown PDF-generation was successful.'
         fi
-        if ! (cd "$r_scratch" && Rscript -e "$find_pandoc_command;rmarkdown::render('mds-knit-pdf-test.Rmd', output_format = 'html_document')") &> /dev/null; then
-            echo "MISSING   rmarkdown HTML-generation failed. Check that quarto and rmarkdown are marked OK above." >> check-setup-mds.log
+        if ! (cd "$r_scratch" && Rscript -e "$find_pandoc_command;rmarkdown::render('mds-knit-pdf-test.Rmd', output_format = 'html_document')") > rmarkdown-html-error.log 2>&1; then
+            echo "MISSING   rmarkdown HTML-generation failed. Check that quarto and rmarkdown are marked OK above, then read the detailed error message below." >> check-setup-mds.log
             if [ "$pandoc_version" = "0" ]; then
                 echo "It seems that RMarkdown cannot find pandoc. The install guides have you install it from pandoc.org; check that 'pandoc --version' works and reports 3.10 or newer." >> check-setup-mds.log
             fi
@@ -668,15 +691,6 @@ if [ -t 0 ]; then
     include_env_reply=$(printf '%s' "$include_env_reply" | tr '[:upper:]' '[:lower:]')
     case "$include_env_reply" in y | yes) include_env='yes' ;; esac
 fi
-echo '' >> check-setup-mds.log
-echo -e "${ORANGE}## Environment${NC}" >> check-setup-mds.log
-if [ "$include_env" = 'yes' ]; then
-    echo 'Included at your request. Review this section and remove anything private before sharing.' >> check-setup-mds.log
-    env >> check-setup-mds.log
-else
-    echo 'Not recorded. You were asked, and chose not to include them.' >> check-setup-mds.log
-fi
-
 # Shell configuration files are worth recording, because a leftover PATH edit or conda init
 # block is a common cause of the failures above. Students do keep tokens in these files
 # though, so any value whose variable name looks like a credential is masked. `export PATH=`
@@ -731,6 +745,20 @@ redact_secrets() {
     '
 }
 
+echo '' >> check-setup-mds.log
+echo -e "${ORANGE}## Environment${NC}" >> check-setup-mds.log
+if [ "$include_env" = 'yes' ]; then
+    echo 'Included at your request. Values that look like credentials are masked, but the' >> check-setup-mds.log
+    echo 'masking is not perfect -- review this section and remove anything private before sharing.' >> check-setup-mds.log
+    # Redacted for the same reason .bash_profile and .bashrc below are, and with more
+    # cause: this is the section that actually holds tokens. It went in unfiltered while
+    # the shell-config sections -- mostly aliases -- were being filtered.
+    env | redact_secrets >> check-setup-mds.log
+else
+    echo 'Not recorded. You were asked, and chose not to include them.' >> check-setup-mds.log
+fi
+
+
 # .bash_profile
 echo '' >> check-setup-mds.log
 echo -e "${ORANGE}## Content of .bash_profile${NC}" >> check-setup-mds.log
@@ -755,15 +783,13 @@ fi
 # section appended after the screen dump is invisible to them, and this file gets mailed
 # to an instructor.
 
-# 5. Ouput the saved file to stdout
-# I am intentionally showing the entire output in the end,
-# instead of progressively with `tee` throughout
-# so that students have time to read the help message in the beginning.
-tail -n +2 check-setup-mds.log  # `tail` to skip rows already echoed to stdout
-
 # Output details about PDF and HTML creation errors
-# This is outputted after all the package OK/MISSING info
-# to separate the detailed error message from the overview of which packages installed correctly.
+# This is written after all the package OK/MISSING info, to separate the detailed error
+# message from the overview of which packages installed correctly -- but BEFORE the screen
+# dump below, because these blocks are the largest thing in the log and they carry
+# absolute paths. Appending them after the dump put them in the file the student mails to
+# an instructor without ever showing them on screen, which is the one thing the ordering
+# comment above forbids.
 if [ -s quarto-typst-error.log ]; then
     echo '' >> check-setup-mds.log
     echo '======== You had the following errors during Quarto Typst PDF generation ========' >> check-setup-mds.log
@@ -794,9 +820,27 @@ if [ -s jupyter-html-error.log ]; then
     cat jupyter-html-error.log >> check-setup-mds.log
     echo '======== End of Jupyter HTML error ========' >> check-setup-mds.log
 fi
+if [ -s rmarkdown-pdf-error.log ]; then
+    echo '' >> check-setup-mds.log
+    echo '======== You had the following errors during R Markdown PDF generation ========' >> check-setup-mds.log
+    cat rmarkdown-pdf-error.log >> check-setup-mds.log
+    echo '======== End of R Markdown PDF error ========' >> check-setup-mds.log
+fi
+if [ -s rmarkdown-html-error.log ]; then
+    echo '' >> check-setup-mds.log
+    echo '======== You had the following errors during R Markdown HTML generation ========' >> check-setup-mds.log
+    cat rmarkdown-html-error.log >> check-setup-mds.log
+    echo '======== End of R Markdown HTML error ========' >> check-setup-mds.log
+fi
 # -f makes sure `rm` succeeds even when the file does not exists
 rm -f jupyter-html-error.log jupyter-webpdf-error.log jupyter-pdf-error.log quarto-pdf-error.log \
-    quarto-typst-error.log
+    quarto-typst-error.log rmarkdown-pdf-error.log rmarkdown-html-error.log
+
+# 5. Ouput the saved file to stdout
+# I am intentionally showing the entire output in the end,
+# instead of progressively with `tee` throughout
+# so that students have time to read the help message in the beginning.
+tail -n +2 check-setup-mds.log  # `tail` to skip rows already echoed to stdout
 
 # 6. Report every Python installation on the machine.
 # This is the same script students are asked to run before installing uv, invoked here so
@@ -809,13 +853,14 @@ echo -e "${ORANGE}## Python installations${NC}" | tee -a check-setup-mds.log
 if [ -x "$(command -v uv)" ]; then
     echo '' >> check-setup-mds.log
     echo 'Python versions known to uv:' >> check-setup-mds.log
-    uv python list >> check-setup-mds.log 2>&1
+    # tee, not >>: the screen dump has already happened by this point, so anything
+    # merely appended from here is in the file the student sends and on no screen.
+    uv python list 2>&1 | tee -a check-setup-mds.log
 fi
 # Downloaded to a file first rather than run straight from a process substitution, so that
 # a failed download is actually noticed instead of silently running an empty script.
 # The base URL is overridable so that this section can be exercised against a pull request
 # preview deploy before it is merged; students never need to set it.
-MDS_BASE_URL="${MDS_BASE_URL:-https://ubc-mds.github.io/mds-setup-check}"
 py_audit=$(mktemp)
 if curl -Ssf "$MDS_BASE_URL/check-python-installs.sh" -o "$py_audit" 2>&1; then
     MDS_EMBEDDED=1 bash "$py_audit" 2>&1 | tee -a check-setup-mds.log
