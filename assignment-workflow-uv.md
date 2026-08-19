@@ -208,20 +208,37 @@ directly does work on Windows -- `mds-setup-check` carries `ci/webpdf.py` to pro
 it -- but there is no way for a student to reach that from the Lab menu, so tell
 them to use Typst.
 
-**LaTeX cannot typeset emoji or literal Greek letters, and does not say so.** This
-is the one to know before writing an assignment. Every LaTeX route above replaces
-those characters with nothing and still reports success, so a student gets a clean
-looking PDF with content missing. Every column below except `raw \begin{align}` is
-measured on the fixtures in this repository by `ci/feature-matrix.py`; that one column is
-reasoned from how pandoc treats raw LaTeX, because no fixture contains a bare `align`
-block on purpose:
+**Every route drops something, silently, and still reports success.** This is the
+section to read before writing an assignment. Every cell below is measured on the
+fixtures in this repository by `ci/feature-matrix.py`, with one stated exception: the
+raw-environment column is measured on `\begin{equation}`, and `\begin{align}` is
+grouped with it because pandoc forwards both for the same reason. No fixture contains
+a bare `align` on purpose.
 
-| | accents, dashes | inline, display, `equation` | `$$\begin{aligned}$$` | raw `\begin{align}` | Greek, emoji | images |
-| --- | --- | --- | --- | --- | --- | --- |
-| LaTeX, via Quarto, nbconvert or rmarkdown | yes | yes | yes | yes | **no** | yes |
-| Typst | yes | yes | yes | **no** | yes | yes |
-| HTML | yes | yes | yes | yes | yes | yes |
-| WebPDF (not on Windows) | yes | yes | yes | yes | yes | yes |
+| | accents, dashes | `$…$`, `$$…$$` | `$$\begin{aligned}$$` | raw `\begin{align}`, `\begin{equation}` | raw `\emph`, `\footnote`, `tabular` | literal Greek, emoji | images |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| LaTeX, via Quarto, nbconvert or rmarkdown | yes | yes | yes | yes | yes | **no** | yes |
+| Typst | yes | yes | yes | **no** | **no** | yes | yes |
+| HTML | yes | yes | yes | yes | **no** | yes | yes |
+
+HTML splits the two raw columns because MathJax re-reads raw LaTeX *maths* out of the
+page source, so a bare `\begin{equation}` survives there even though `\emph{}` does
+not. Typst has no such second pass and loses both. **WebPDF** is not a row of its own:
+it prints the HTML in a browser and matches the HTML row wherever it is available,
+which the notebook fixture measures directly.
+
+**One rule explains every cell above.** Pandoc parses markdown into a format-neutral
+document and writes each output format from that. Anything it *parses* is translated
+per format and survives everywhere. Anything it cannot parse is *forwarded* to the
+LaTeX output verbatim and discarded by every other writer, with no error. Pandoc
+parses `$…$` and `$$…$$` as maths, so those reach every route; it forwards a bare
+`\begin{...}`, so that reaches the LaTeX PDF and, thanks to MathJax, the HTML -- but
+not Typst.
+
+Two things sit outside that rule and are worth holding separately. A literal Greek
+letter or emoji is parsed perfectly well, and is then dropped by **LaTeX**, which has
+no glyph for it. And `\text{}` inside maths is parsed as maths but *typeset as text*,
+which puts a literal character inside it back under the same LaTeX limitation.
 
 **A notebook containing a markdown table cannot be exported to PDF from
 JupyterLab.** nbconvert's LaTeX template writes `\LTcaptype{none}`, which TeX Live
@@ -230,22 +247,54 @@ the table. Rendering the same notebook with `uv run quarto render <file> --to pd
 works, table and all. This is why the preferred route is Quarto and not the export
 menu — Quarto reads `.ipynb` directly, so nothing has to be rewritten.
 
-**Write aligned equations as `$$\begin{aligned}…\end{aligned}$$`, not as a bare
-`\begin{align}`.** The bare form is a raw LaTeX environment that pandoc passes
-through untranslated, so Typst never sees it and renders nothing, silently. Inside
-`$$` it is maths that pandoc parses, and every route handles it.
+### Three rules that follow from it
 
-That leaves one real split: **LaTeX cannot do Greek or emoji.** Written as maths
-(`$\alpha$`) Greek works everywhere, so in practice only emoji force the choice —
-and for those, use Typst or HTML — or WebPDF, on a Mac or on Linux.
+**1. Every maths construct goes inside `$…$` or `$$…$$`.** Never a bare
+`\begin{equation}` or `\begin{align}`; both are raw environments that Typst never
+sees and renders nothing for. Write aligned equations as
+`$$\begin{aligned}…\end{aligned}$$`, and get a numbered equation from Quarto's own
+cross-reference syntax rather than from LaTeX:
 
-Mathematics is unaffected: `$\alpha$` typesets correctly everywhere, because maths
-is set from a different font. It is only literal `α` in prose that disappears. So
-an assignment written with LaTeX maths is safe; one with an emoji in a heading, or
-a data frame column named `α`, is not.
+```markdown
+$$
+\mathrm{MSE} = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
+$$ {#eq-mse}
 
-If an assignment needs those characters in a PDF, use Typst. It ships with Quarto,
-needs no LaTeX, and requires no extra installation.
+See @eq-mse.
+```
+
+That form is numbered `(1)` in both the LaTeX PDF and the Typst PDF, and the
+cross-reference resolves in both. A bare `\begin{equation}` is numbered in LaTeX and
+absent from Typst.
+
+**2. Nothing outside maths starts with a backslash.** Bold is `**bold**`, emphasis is
+`*emphasis*`, tables are markdown tables, footnotes are `^[like this]`. Written that
+way they reach every route, because pandoc parses them. Written as `\textbf{}`,
+`\emph{}`, `\footnote{}` or a `tabular`, they reach the LaTeX PDF and vanish from
+Typst and HTML -- and they vanish *tidily*, leaving a grammatical sentence with a
+word missing, which is why nobody notices. `check-raw-passthrough.qmd` measures this.
+
+**3. Inside maths, Greek is `\alpha`, never a literal `α`.** The delimiters are not a
+shield. `\text{}` and `\mathrm{}` switch back to the text font mid-equation, so
+
+```markdown
+$$ \theta = \text{α} $$
+```
+
+loses its α in every LaTeX route -- inside an equation whose other symbols typeset
+perfectly beside it. Write `$\theta = \alpha$` and it renders everywhere.
+
+### What is left over
+
+**Emoji.** There is no maths form for an emoji, so the rules above cannot rescue one.
+An assignment that needs emoji in a PDF has to be rendered with Typst, HTML or
+WebPDF. Typst is the usual answer: it ships with Quarto, needs no LaTeX, and requires
+no extra installation.
+
+Note that this is a property of the *characters*, not of the assignment's difficulty.
+An assignment full of hard mathematics is safe on every route as long as the maths is
+written as maths. One with an emoji in a heading, or a data frame column literally
+named `α`, is not.
 
 **Keep R and Python in separate documents.** Quarto's `knitr` engine can run both
 in one file, but the Python chunks go through `reticulate`, which has to locate

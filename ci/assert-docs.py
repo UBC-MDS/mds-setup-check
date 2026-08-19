@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that README.md and CLAUDE.md still describe this repository.
+"""Check that the documentation still describes this repository.
 
 Documentation drifts silently, and this project exists because silent drift is the
 failure mode worth catching. Both documents name make targets, fixtures and scripts;
@@ -21,7 +21,11 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DOCS = ["README.md", "CLAUDE.md"]
+# assignment-workflow-uv.md is here because course repos are copied from what it
+# describes: it names fixtures and ci/ scripts, and nothing was checking that those
+# names still resolve. A rename would have broken the guide the teaching team reads
+# without breaking anything that runs.
+DOCS = ["README.md", "CLAUDE.md", "assignment-workflow-uv.md"]
 
 failures: list[str] = []
 
@@ -77,7 +81,7 @@ def main() -> int:
             print(f"  - {line}")
         print("\nUpdate the prose, or restore what it refers to.")
         return 1
-    print("README.md and CLAUDE.md still describe this repository.")
+    print("The documentation still describes this repository.")
     return 0
 
 

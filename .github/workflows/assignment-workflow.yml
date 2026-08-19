@@ -100,7 +100,7 @@ jobs:
       # assignment repos are copied from. If they stop being true, every repo
       # derived from it inherits the problem.
       - name: Check the pyproject contract
-        run: uv run python ci/assert-contract.py
+        run: make check-contract
 
       # Reads files rather than rendering anything, so one platform is enough.
       # Catches a fixture or target renamed in the code and not in the prose, which

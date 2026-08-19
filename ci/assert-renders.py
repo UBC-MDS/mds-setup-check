@@ -74,6 +74,11 @@ IPYNB, RMD = "check-notebook.ipynb", "check-rmarkdown.Rmd"
 # matrix can say both things: that the notebook route works, and exactly what
 # breaks it. If its LaTeX row ever turns green, nbconvert has fixed the bug.
 TABLE = "check-notebook-table.ipynb"
+# The mirror image of TABLE, and isolated for the same reason. It carries the two
+# constructs pandoc FORWARDS rather than parses, which fail in opposite directions:
+# Typst discards the raw \footnote, LaTeX discards the literal Greek inside \text{}.
+# In a full fixture each would have looked like a broken route.
+RAW = "check-raw-passthrough.qmd"
 
 # produced file -> (label, route class, the document it was rendered from)
 ROUTES = {
@@ -106,6 +111,11 @@ ROUTES = {
     "check-notebook-table-nbconvert.html": ("table   -> nbconvert -> HTML",   FULL,  TABLE),
     "check-notebook-table-quarto-latex.pdf":
                                           ("table   -> Quarto -> LaTeX",     LATEX, TABLE),
+    "check-raw-passthrough-quarto-latex.pdf":
+                                          ("raw     -> Quarto -> LaTeX",     LATEX, RAW),
+    "check-raw-passthrough-quarto-typst.pdf":
+                                          ("raw     -> Quarto -> Typst",     TYPST, RAW),
+    "check-raw-passthrough-quarto.html":  ("raw     -> Quarto -> HTML",      FULL,  RAW),
 }
 
 # (label, needles, supported-by, source marker). A check passes if ANY needle is
@@ -144,6 +154,23 @@ CHECKS = [
     # no error. LaTeX and HTML both set it correctly.
     ("numbered eqn",   ["MSE"],             {LATEX, FULL},        r"\mathrm{MSE}"),
     ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}, "| you want |"),
+    # The three below are measured only on check-raw-passthrough.qmd. Pandoc parses
+    # markdown into a format-neutral document and writes each format from that, so
+    # anything it parses survives every route; anything it cannot parse is forwarded
+    # to LaTeX verbatim and dropped everywhere else, silently.
+    #
+    # `RTFN` is spelled to avoid an `AW` pair on purpose. It began as `RAWFN`, which
+    # renders perfectly and extracts from the LaTeX PDF as "RA WFN" -- lualatex kerns
+    # the pair and pypdf reports the kern as a space. A check that cannot see content
+    # that is demonstrably on the page is worse than no check, so needles here have to
+    # survive extraction as well as be unique.
+    ("raw LaTeX",      ["RTFN"],            {LATEX},              r"\footnote{RTFN"),
+    ("markdown note",  ["MDFN"],            {LATEX, TYPST, FULL}, "^[MDFN"),
+    # `$$` is not a shield: \text{} switches back to the text font mid-equation, so a
+    # literal Greek character there is dropped by LaTeX exactly as it would be in
+    # prose -- inside an equation whose subscript typesets perfectly beside it. The
+    # TXTGRK and CMDGRK subscripts are what prove both equations rendered at all.
+    ("Greek in text{}", ["α"],              {TYPST, FULL},        r"\text{α}"),
 ]
 
 # The image is not text, so it needs a probe of its own rather than a needle.
