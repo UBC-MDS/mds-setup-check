@@ -269,9 +269,11 @@ CI as evidence that the install guides work.**
   RStudio, the `/Library/PostgreSQL` scan, bash 3.2 patterns) and its Windows
   branch (`tlmgr.bat`, `reg query`, `$LOCALAPPDATA`) have no execution coverage at
   all. Those two branches are also where most of its platform-specific code lives.
-- **Nothing asserts on a `MISSING` line.** The end-to-end step runs to completion
-  regardless, and the check that follows greps for four specific strings. Every
-  version pattern in the script could be wrong and CI would still be green.
+- **Nothing asserts that a `MISSING` line is *right*.** The end-to-end step runs to
+  completion regardless, and the check that follows greps for five specific strings.
+  One of those does concern `MISSING` lines — the note that has to accompany a missing
+  RStudio or Positron — but nothing compares a version pattern against a real install,
+  so every pattern in the script could be wrong and CI would still be green.
 - **The version patterns are substring tests, not version tests.** `R=4.*` accepts
   `R version 5.0.0 (2027-04-20)` — it matches the `04` in the date. `latex=3.*`
   cannot fail at all, because pdfTeX's version string is π. See
