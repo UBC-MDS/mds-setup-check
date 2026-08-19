@@ -1,0 +1,11 @@
+# The Windows install guide has students set git to "checkout Windows-style, commit
+# Unix-style", so without these every one of these files arrives on a Windows machine
+# with CRLF line endings. bash then fails on the shebang with "$'\r': command not
+# found" and GNU make appends a carriage return to every argument in a recipe. Neither
+# error mentions line endings and both get reported as "the repo is broken".
+*.sh     text eol=lf
+Makefile text eol=lf
+*.py     text eol=lf
+*.qmd    text eol=lf
+*.Rmd    text eol=lf
+*.ipynb  text eol=lf
