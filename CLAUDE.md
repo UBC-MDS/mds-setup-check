@@ -71,7 +71,8 @@ asked about constructs it holds. A new fixture needs no special case.
 ## The fixtures
 
 Four full fixtures carry the same features, so any difference between them is a property
-of the toolchain. `check-notebook-table.ipynb` is the exception: one construct, isolated.
+of the toolchain. `check-notebook-table.ipynb` and `check-raw-passthrough.qmd` are the
+exceptions: one or two constructs each, isolated.
 
 Splitting it out is the pattern to copy. nbconvert cannot export a notebook containing a
 markdown table, which made the route students actually use fail for everyone. With the
@@ -79,6 +80,18 @@ table in its own file, the matrix says both things at once — the notebook rout
 *and* this is what breaks it — and the row turns green the day upstream fixes it. Three
 routes over that one table locate the fault: nbconvert's HTML is fine, Quarto's LaTeX is
 fine, so it is nbconvert's LaTeX template.
+
+`check-raw-passthrough.qmd` isolates for the mirror-image reason. Its two constructs
+fail on *opposite* routes -- Typst loses a raw `\footnote{}`, LaTeX loses a literal `α`
+inside `\text{}` -- so in a full fixture each would have read as a broken route rather
+than as one property of pandoc: it forwards what it cannot parse, and every non-LaTeX
+writer then discards it. Both failures are silent and leave grammatical prose behind.
+
+One thing that fixture taught, which applies to every needle here: **a needle must
+survive PDF text extraction, not merely be unique.** Its marker began as `RAWFN`, which
+renders correctly and extracts from the LaTeX PDF as `RA WFN`, because lualatex kerns
+the `AW` pair and pypdf reports the kern as a space. The check failed on content that
+was demonstrably on the page. It is now `RTFN`.
 
 Output files are named `<document>-<tool>-<format>`. This is load-bearing, not cosmetic:
 Quarto compiles to an intermediate named after the *input* and then moves it, so a route
@@ -103,9 +116,12 @@ named after its input alone gets silently eaten by the next route.
 
 ## Keeping things in sync
 
-`CLAUDE.md`, `README.md` and the repository must agree. `make check-docs` (also run in
-CI, via `ci/assert-docs.py`) enforces the mechanical part: every `make` target, fixture
-and `ci/` script named in either document has to exist. It cannot check whether the prose
+`CLAUDE.md`, `README.md`, `assignment-workflow-uv.md` and the repository must agree.
+`make check-docs` (also run in CI, via `ci/assert-docs.py`) enforces the mechanical
+part: every `make` target, fixture and `ci/` script named in any of the three has to
+exist. `make check-contract` (`ci/assert-contract.py`) is the separate gate for the
+claims the assignment guide makes about this repo's own `pyproject.toml` and routes;
+it used to run only in CI, where an instructor copying this repo could not reach it. It cannot check whether the prose
 is *true*, so when behaviour changes, update both documents in the same commit.
 
 The README is written for students and instructors; this file is context for an agent.

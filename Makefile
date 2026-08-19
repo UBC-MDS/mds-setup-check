@@ -26,7 +26,7 @@
 #
 # Every Python command is therefore prefixed with `uv run`.
 
-.PHONY: commands all render install clean check check-docs matrix matrix-check pdf typst html webpdf
+.PHONY: commands all render install clean check check-docs check-contract matrix matrix-check pdf typst html webpdf
 
 # `commands` is first, so a bare `make` prints this list rather than doing work.
 # The list is built from the `##` comments on each target below, so it cannot go
@@ -68,13 +68,15 @@ LATEX_OUT = check-quarto-py-latex.pdf check-quarto-r-latex.pdf \
             check-notebook-quarto-latex.pdf check-rmarkdown-quarto-latex.pdf \
             check-notebook-nbconvert-latex.pdf check-rmarkdown-rmarkdown-latex.pdf \
             check-notebook-table-nbconvert-latex.pdf \
-            check-notebook-table-quarto-latex.pdf
+            check-notebook-table-quarto-latex.pdf \
+            check-raw-passthrough-quarto-latex.pdf
 TYPST_OUT = check-quarto-py-typst.pdf check-quarto-r-typst.pdf \
-            check-notebook-quarto-typst.pdf check-rmarkdown-quarto-typst.pdf
+            check-notebook-quarto-typst.pdf check-rmarkdown-quarto-typst.pdf \
+            check-raw-passthrough-quarto-typst.pdf
 HTML_OUT  = check-quarto-py.html check-quarto-r.html \
             check-notebook-quarto.html check-rmarkdown-quarto.html \
             check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html \
-            check-notebook-table-nbconvert.html
+            check-notebook-table-nbconvert.html check-raw-passthrough-quarto.html
 WEBPDF_OUT = check-notebook-nbconvert-web.pdf check-notebook-nbconvert-api-web.pdf
 
 # Four documents in three input formats, three renderers, four output formats. Quarto can render every input
@@ -135,6 +137,15 @@ check-notebook-table-nbconvert.html: check-notebook-table.ipynb
 check-notebook-table-quarto-latex.pdf: check-notebook-table.ipynb
 	uv run quarto render $< --to pdf --output $@
 
+# --- raw LaTeX passthrough, alone --------------------------------------------
+# The other half of the isolation argument the markdown table makes above. These
+# two constructs fail in opposite directions -- Typst loses the raw \footnote, LaTeX
+# loses the literal Greek inside \text{} -- so putting them in a full fixture would
+# have made two routes look broken for reasons that are really one property of
+# pandoc: it forwards what it cannot parse, and every non-LaTeX writer discards it.
+check-raw-passthrough-quarto-latex.pdf check-raw-passthrough-quarto-typst.pdf check-raw-passthrough-quarto.html: check-raw-passthrough.qmd
+	uv run quarto render $< --to $(if $(findstring typst,$@),typst,$(if $(findstring html,$@),html,pdf))
+
 # --- rmarkdown: rendered by R itself -----------------------------------------
 check-rmarkdown-rmarkdown-latex.pdf: check-rmarkdown.Rmd
 	Rscript -e 'rmarkdown::render("$<", output_format = "pdf_document", output_file = "$@")'
@@ -175,8 +186,14 @@ matrix-check:  ## Check the README's table still matches the rendered files
 
 # Documentation drifts silently, which is the failure this project exists to catch, so
 # the mechanical half of "keep the docs in sync" is a target rather than a promise.
-check-docs:  ## Check README.md and CLAUDE.md still describe this repository
+check-docs:  ## Check the documentation still describes this repository
 	uv run python ci/assert-docs.py
+
+# The claims assignment-workflow-uv.md makes about this repo, which course repos are
+# copied from. It ran only in CI, so an instructor copying this repository could not
+# check the contract they were inheriting without knowing the script by name.
+check-contract:  ## Check this repo still matches what the assignment guide describes
+	uv run python ci/assert-contract.py
 
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced
