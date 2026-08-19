@@ -449,9 +449,11 @@ error from uv itself.
 
 ## 11. Open items for the teaching team
 
-- **A shared repo template.** The `pyproject.toml` in §3 should become an actual
-  template repo, so that JupyterLab and `ipykernel` are declared consistently
-  and nobody has to remember §7.
+- **A shared repo template.** `demo-assignment/` in this repository is a working
+  example of everything above -- one notebook, its own lock file, a `Makefile`, and
+  a linter for the §5 rules. It is a demo rather than a template: turning it into a
+  real template repo, so that JupyterLab and `ipykernel` are declared consistently
+  and nobody has to remember §7, is still to do.
 - **DSCI 521.** The environments content was written around conda and needs to
   move to uv. `.venv` is no longer a thing students meet for the first time in
   block 2 — they will have been inside one since installation week — so the

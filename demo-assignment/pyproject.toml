@@ -1,0 +1,28 @@
+[project]
+name = "dsci-599-lab1"
+version = "0.1.0"
+requires-python = ">=3.14"
+
+# Deliberately shorter than the list in the root pyproject.toml of this repository.
+# That one is "every package the MDS install guides expect a student to end up with",
+# because its job is to check the install. An assignment repo declares what the
+# assignment uses and nothing else.
+#
+#   ipykernel    a kernel, named explicitly rather than left to arrive with
+#                jupyterlab, so `uv sync --no-dev` still leaves one. See §7 of
+#                ../assignment-workflow-uv.md.
+#   jupyterlab   a real dependency, not a dev one: Jupyter server extensions only
+#                work in the same environment prefix as the kernel.
+#   otter-grader students write `import otter` in the notebook.
+#   pandas       the assignment uses it.
+#   matplotlib   the assignment plots with it.
+dependencies = [
+    "ipykernel>=7",
+    "jupyterlab>=4.6",
+    "matplotlib>=3.10",
+    "otter-grader>=7",
+    "pandas>=3",
+]
+
+[tool.uv]
+package = false
