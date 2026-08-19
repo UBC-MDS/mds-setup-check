@@ -111,6 +111,14 @@ named after its input alone gets silently eaten by the next route.
   `env`. Note `pat` is matched as a whole word only; as a substring it is inside `PATH`.
 - **Deleting the student's folder is their decision**, asked as its own question,
   defaulting to no, with two guards in front of the `rm -rf`.
+- **RStudio and Positron are the only two `MISSING` lines a student may ignore.** They
+  are the only programs checked that nobody runs from a terminal, so if the application
+  opens, the lookup was wrong and nothing is broken; every other name there is a command
+  the student will type, `docker` included. The script says so in a note under that
+  section, and `report_missing` writes the line and records the name in one call —
+  grepping the finished log for the two names instead would switch the note off silently
+  the day a requirement string is reworded. CI asserts the note appears whenever those
+  lines do.
 - The `2> /dev/null` idiom is how a fixture rename went unnoticed for three commits.
   Do not silence a copy that is meant to be load-bearing.
 

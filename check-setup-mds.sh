@@ -157,6 +157,37 @@ echo '' >> check-setup-mds.log
 # Currently marks both uninstalled and wrong verion number as MISSING
 echo -e "${ORANGE}## System programs${NC}" >> check-setup-mds.log
 
+# What a MISSING line should say. Printing the regex at a first-week student is not a
+# diagnostic -- `MISSING pandoc=(^|[[:space:]])(3\.(1[0-9]|...` tells them nothing about
+# what to install. Anything not named here falls back to the pattern, which is readable
+# for the simple cases like `R=4.*`.
+requirement_text() {
+    case "$1" in
+        pandoc)   echo "pandoc 3.10 or newer" ;;
+        uv)       echo "uv (any 0.x version)" ;;
+        docker)   echo "docker 28 or 29" ;;
+        positron) echo "positron 2026.*" ;;
+        rstudio)  echo "rstudio 2026.*" ;;
+        psql)     echo "postgreSQL 16, 17 or 18" ;;
+        tlmgr)    echo "tlmgr (installed with TinyTeX)" ;;
+        latex)    echo "a LaTeX engine (TinyTeX installs one)" ;;
+        *)        echo "$2" ;;
+    esac
+}
+
+# Writing a MISSING line and recording which program it was for are the same event, so
+# they are the same call. Both platform branches below report a missing RStudio too, and
+# the alternative -- grepping the finished log for the two names further down -- would
+# switch itself off silently the day one of those strings is reworded.
+gui_apps_missing=''
+report_missing() {
+    echo "MISSING   $(requirement_text "$1" "$2")" >> check-setup-mds.log
+    case "$1" in
+        rstudio)  gui_apps_missing="${gui_apps_missing:+$gui_apps_missing and }RStudio" ;;
+        positron) gui_apps_missing="${gui_apps_missing:+$gui_apps_missing and }Positron" ;;
+    esac
+}
+
 # There is an esoteric case for .app programs on macOS where `--version` does not work.
 # Also, not all programs are added to path,
 # so easier to test the location of the executable than having students add it to PATH.
@@ -185,7 +216,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
 
     # rstudio is installed as an .app
     if ! $(grep -iq "= \"2026\..*" <<< "$(mdls -name kMDItemVersion /Applications/RStudio.app)"); then
-        echo "MISSING   rstudio 2026.*" >> check-setup-mds.log
+        report_missing rstudio
     else
         # This is what is needed instead of --version
         installed_version_tmp=$(grep -io "= \"2026\..*" <<< "$(mdls -name kMDItemVersion /Applications/RStudio.app)")
@@ -227,7 +258,7 @@ elif [ -n "$is_windows" ]; then
     # so this section can only be troubleshot from the script
     rstudio_version=$("$program_files/RStudio/rstudio" --version 2> /dev/null)
     if ! $(grep -iq "2026\..*" <<< "$rstudio_version"); then
-        echo "MISSING   rstudio 2026.*" >> check-setup-mds.log
+        report_missing rstudio
     else
         echo "OK        rstudio $rstudio_version" >> check-setup-mds.log
     fi
@@ -251,31 +282,13 @@ else
     # `mds-setup-check` project instead.
 fi
 
-# What a MISSING line should say. Printing the regex at a first-week student is not a
-# diagnostic -- `MISSING pandoc=(^|[[:space:]])(3\.(1[0-9]|...` tells them nothing about
-# what to install. Anything not named here falls back to the pattern, which is readable
-# for the simple cases like `R=4.*`.
-requirement_text() {
-    case "$1" in
-        pandoc)   echo "pandoc 3.10 or newer" ;;
-        uv)       echo "uv (any 0.x version)" ;;
-        docker)   echo "docker 28 or 29" ;;
-        positron) echo "positron 2026.*" ;;
-        rstudio)  echo "rstudio 2026.*" ;;
-        psql)     echo "postgreSQL 16, 17 or 18" ;;
-        tlmgr)    echo "tlmgr (installed with TinyTeX)" ;;
-        latex)    echo "a LaTeX engine (TinyTeX installs one)" ;;
-        *)        echo "$2" ;;
-    esac
-}
-
 for sys_prog in "${sys_progs[@]}"; do
     sys_prog_no_version=$(sed "s/=.*//" <<< "$sys_prog")
     regex_version=$(sed "s/.*=//" <<< "$sys_prog")
     # Check if the command exists and is is executable
     if ! [ -x "$(command -v "$sys_prog_no_version")" ]; then
         # If the executable does not exist
-        echo "MISSING   $(requirement_text "$sys_prog_no_version" "$sys_prog")" >> check-setup-mds.log
+        report_missing "$sys_prog_no_version" "$sys_prog"
     else
         # Check if the version regex string matches the installed version
         # Use `head` because `R --version` prints an essay...
@@ -287,7 +300,7 @@ for sys_prog in "${sys_progs[@]}"; do
         # and troubleshoot from there
         if ! $(grep -Eiq "$regex_version" <<< "$($sys_prog_no_version --version &> >(head -1))"); then
             # If the version is wrong
-            echo "MISSING   $(requirement_text "$sys_prog_no_version" "$sys_prog")" >> check-setup-mds.log
+            report_missing "$sys_prog_no_version" "$sys_prog"
         else
             # Since programs like rstudio and vscode don't print the program name with `--version`,
             # we need one extra step before logging
@@ -296,6 +309,32 @@ for sys_prog in "${sys_progs[@]}"; do
         fi
     fi
 done
+
+# RStudio and Positron are the only two programs above that a student never types into a
+# terminal -- they are used entirely by double-clicking them -- which makes them the only
+# two this check can be wrong about in a way that is safe to ignore. It finds them by name
+# on PATH, or at one standard install location, and a working installation is not always
+# in either place: Positron only puts `positron` on PATH if you ask it to, and either
+# application can be installed somewhere else. Everything else here is a command the
+# student will actually run, so a MISSING line for one of those is real work even when a
+# desktop application of the same name opens. `docker` is the one that catches people.
+#
+# The note goes next to the lines it explains rather than into the help text at the top,
+# and only when there is a line to explain. It is written before the dump at the end, so
+# the student reads the same copy the instructor is sent.
+if [ -n "$gui_apps_missing" ]; then
+    echo '' >> check-setup-mds.log
+    echo "NOTE      $gui_apps_missing marked MISSING above: if you can open the application by" >> check-setup-mds.log
+    echo "          double-clicking it, then it is installed and this check simply failed to" >> check-setup-mds.log
+    echo "          find it. You can ignore that line. The check goes looking by name on your" >> check-setup-mds.log
+    echo "          PATH and at one standard install location, and a working install is not" >> check-setup-mds.log
+    echo "          always in either place." >> check-setup-mds.log
+    echo "          Two things to keep in mind. Confirm the version in the application's own" >> check-setup-mds.log
+    echo "          About window, since an out-of-date install is reported the same way. And" >> check-setup-mds.log
+    echo "          this applies to RStudio and Positron only, because they are the only" >> check-setup-mds.log
+    echo "          programs here you never run from a terminal -- every other MISSING line" >> check-setup-mds.log
+    echo "          is real, even when a desktop application of that name opens fine." >> check-setup-mds.log
+fi
 
 # 2. Python packages
 # MDS does not install a machine-wide Python environment any more. Every project carries

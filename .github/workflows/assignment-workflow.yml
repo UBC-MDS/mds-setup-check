@@ -279,6 +279,19 @@ jobs:
             exit 1
           fi
 
+          # RStudio and Positron are installed on no runner, so both are MISSING on all
+          # three platforms and the note explaining that a MISSING line for those two is
+          # ignorable when the application opens has to be there. Asserted as an
+          # implication rather than flatly, so that installing either one on a runner
+          # later turns this into a no-op instead of a failure -- but the note going
+          # quiet while the MISSING lines stay is caught, which is exactly what happens
+          # if the recording and the line ever drift apart again.
+          if grep -Eiq "^MISSING.*(rstudio|positron)" <<< "$log"; then
+            grep -q "^NOTE .*marked MISSING above" <<< "$log" \
+              || { echo "FAIL: RStudio/Positron reported MISSING with no note saying that"
+                   echo "      an application that opens can be ignored"; exit 1; }
+          fi
+
           # ---- everything below needed the prompts answered ---------------------
           # Skipped on Windows, where Python's pty is unavailable, so the run there took
           # the no-terminal path and never set the project up. Say so rather than
