@@ -1,0 +1,10 @@
+# The packages the Gradescope autograder image needs to run this notebook.
+#
+# This is NOT built from uv.lock. otter's autograder image is conda/mamba based and
+# installs from this file, so a dependency that is in pyproject.toml but missing here
+# exists for the student and not for the grader. An EMPTY file here is the worst case:
+# the image builds, the notebook fails on `import pandas`, and every question that
+# touches a DataFrame is marked wrong for reasons that have nothing to do with the
+# student's answer.
+matplotlib
+pandas
