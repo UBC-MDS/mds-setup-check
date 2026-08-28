@@ -62,7 +62,7 @@ PDF.
 - **Maths.** Atkinson has no mathematical glyphs, so equations stay in Latin Modern
   Math and will not match the prose. That is the trade, and why this is a choice.
 - **Greek and emoji.** Atkinson has neither. Write Greek as maths (`$\alpha$`), which
-  is what [the README](README.md) recommends anyway.
+  is what [the README](../README.md) recommends anyway.
 
 Both families are on [Google Fonts](https://fonts.google.com/) and can be installed
 locally, after which Positron, RStudio and VS Code will offer them as an editor font.

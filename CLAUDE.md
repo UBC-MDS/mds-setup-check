@@ -60,8 +60,9 @@ stay that way.
   is `#6-autograding-and-docker`.
 - The route matrix lives in `docs/render-matrix.md`, not in the README. It is
   intimidating and it is generated, so it does not belong in the front door.
-- `README.md`, `assignment-workflow-uv.md`, `mds-demo-assignment/README.md` and
-  `using-atkinson-hyperlegible.md` are the reader-facing set. This file is not.
+- `README.md`, `mds-demo-assignment/README.md` and everything in `docs/` are the
+  reader-facing set. This file is not. Longer-form guides live in `docs/`; the README
+  is the front door and stays short.
 
 ## The three commands
 
@@ -186,11 +187,13 @@ assignment would fail.
 ## Keeping things in sync
 
 `make check-docs` (`ci/assert-docs.py`, also run in CI) enforces the mechanical half:
-every `make` target, fixture and `ci/` script named in `README.md`, `CLAUDE.md`,
-`assignment-workflow-uv.md` or `docs/render-matrix.md` has to exist.
+every `make` target, fixture and `ci/` script named in `README.md`, `CLAUDE.md` or
+any document in `docs/` has to exist, and every relative link in them resolves --
+file *and* heading. Add a new reader-facing document to `DOCS` in that script.
 
 `make check-contract` (`ci/assert-contract.py`) is the separate gate for the claims
-`assignment-workflow-uv.md` makes about this repo's own `pyproject.toml` and routes. It
+`docs/assignment-workflow-uv.md` makes about this repo's own `pyproject.toml` and
+routes. It
 groups its output under that document's **headings**, not its section numbers, so
 renumbering the guide cannot strand it.
 

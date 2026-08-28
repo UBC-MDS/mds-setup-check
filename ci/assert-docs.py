@@ -30,8 +30,10 @@ _ar = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_ar)
 FIXTURE_DIR = _ar.FIXTURE_DIR
 FIXTURES = {src for _, _, src in _ar.ROUTES.values()} | {"mds-logo.png"}
-DOCS = ["README.md", "CLAUDE.md", "assignment-workflow-uv.md",
-        "docs/render-matrix.md"]
+DOCS = ["README.md", "CLAUDE.md",
+        "docs/assignment-workflow-uv.md",
+        "docs/render-matrix.md",
+        "docs/using-atkinson-hyperlegible.md"]
 
 failures: list[str] = []
 
@@ -98,19 +100,22 @@ def main() -> int:
         for wf in sorted(set(re.findall(r"\.github/workflows/[a-z-]+\.yml", text))):
             check((ROOT / wf).exists(), doc, f"`{wf}` exists")
 
-        # Section links, which the docs use instead of "see section 4". A number
-        # survives a rename and quietly starts pointing at the wrong place; a link
-        # breaks, and this is what turns that break into a failed build.
-        for where, anchor in sorted(set(re.findall(
-                r"\[[^\]]*\]\(([^)#\s]*)#([^)\s]+)\)", text))):
-            if where.startswith(("http://", "https://")):
+        # Every relative link, with or without a #fragment. The anchored half catches
+        # a renamed heading; the plain half catches a MOVED FILE -- which is what got
+        # through green when the guides were reorganised into docs/.
+        for link in sorted(set(re.findall(r"\]\(([^)\s]+)\)", text))):
+            if link.startswith(("http://", "https://", "mailto:")):
                 continue                      # someone else's page, not ours to check
-            target = (ROOT / doc).parent / where if where else ROOT / doc
-            label = f"`{where}#{anchor}`" if where else f"`#{anchor}`"
-            if target.suffix != ".md" or not target.exists():
-                check(False, doc, f"{label} points at a document that exists")
-                continue
-            check(anchor in anchors(target), doc, f"{label} points at a real heading")
+            where, _, anchor = link.partition("#")
+            target = ((ROOT / doc).parent / where) if where else (ROOT / doc)
+            if where:
+                if not target.exists():
+                    check(False, doc, f"`{link}` points at a file that exists")
+                    continue
+                check(True, doc, f"`{link}` points at a file that exists")
+            if anchor:
+                found = target.suffix == ".md" and anchor in anchors(target)
+                check(found, doc, f"`{link}` points at a real heading")
 
     # The two documents must agree on the three commands a student runs.
     readme = (ROOT / "README.md").read_text(encoding="utf-8")

@@ -159,7 +159,7 @@ matrix-check:  ### Check docs/render-matrix.md still matches the rendered files
 check-docs:  ### Check the documentation still describes this repository
 	uv run python ci/assert-docs.py
 
-# The claims assignment-workflow-uv.md makes about this repo, which course repos are
+# The claims docs/assignment-workflow-uv.md makes about this repo, which course repos are
 # copied from.
 check-contract:  ### Check this repo still matches what the assignment guide describes
 	uv run python ci/assert-contract.py

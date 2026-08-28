@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the claims assignment-workflow-uv.md makes about this repository.
+"""Check the claims docs/assignment-workflow-uv.md makes about this repository.
 
 Course repos are copied from what that document describes, so if these stop being true
 every repo derived from it inherits the problem. Each check names the section it
@@ -22,7 +22,7 @@ import tomllib
 FAIL = []
 
 
-# The headings in assignment-workflow-uv.md that these checks defend.
+# The headings in docs/assignment-workflow-uv.md that these checks defend.
 CONTRACT = "What your repo must contain"
 ROUTES = "Writing a document that renders everywhere"
 
@@ -109,7 +109,7 @@ def main() -> int:
     if FAIL:
         print(f"{len(FAIL)} contract check(s) failed.")
         return 1
-    print("The repository still matches what assignment-workflow-uv.md describes.")
+    print("The repository still matches what docs/assignment-workflow-uv.md describes.")
     return 0
 
 

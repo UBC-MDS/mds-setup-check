@@ -3,7 +3,7 @@
 For instructors and TAs, written for the 2026-27 cohort alongside the move from conda
 to uv.
 
-**Start from [`mds-demo-assignment/`](mds-demo-assignment/)**, not from this
+**Start from [`mds-demo-assignment/`](../mds-demo-assignment/)**, not from this
 repository. It is one notebook with its own `pyproject.toml`, `uv.lock` and `Makefile`,
 small enough to read in a sitting. This repository is the
 reference implementation -- every rule in
@@ -183,7 +183,7 @@ Two things sit outside it
 these are parsed fine and then dropped by **LaTeX**, which has no glyph for it.
 
 Measured results per route, and the three known toolchain limitations, are in
-[`docs/render-matrix.md`](docs/render-matrix.md).
+[`render-matrix.md`](render-matrix.md).
 
 ### Five more things worth knowing
 

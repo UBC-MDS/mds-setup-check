@@ -88,7 +88,7 @@ jobs:
         run: Rscript -e 'renv::restore(prompt = FALSE)'
 
       # ------------------------------------------------- the repo's contract ---
-      # "What your repo must contain" in assignment-workflow-uv.md makes claims about
+      # "What your repo must contain" in docs/assignment-workflow-uv.md makes claims about
       # the file assignment repos are copied from. If they stop being true, every
       # derived repo inherits it.
       - name: Check the pyproject contract
