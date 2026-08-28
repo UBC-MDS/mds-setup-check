@@ -1,13 +1,6 @@
 # Tests what a student does every week, rather than what they do once in September.
-#
-# assignment-workflow-uv.md names this repository as the reference implementation
-# for MDS assignment repos, and its pyproject.toml is the template those repos are
-# copied from. So exercising the workflow here exercises the template.
-#
-# The job asserts on the CONTENT of the rendered documents, not on exit codes.
-# Every LaTeX route in this project exits 0 while silently replacing characters it
-# has no glyph for, so a check that only looks at exit codes passes on a broken
-# document. That is the failure this workflow exists to catch.
+# Asserts on the CONTENT of the rendered documents, not on exit codes: every LaTeX
+# route exits 0 while silently replacing characters it has no glyph for.
 
 name: Assignment workflow
 
@@ -16,8 +9,8 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    # Mondays at 15:00 UTC. This repository can sit unchanged for months, so the
-    # push trigger alone would never fire; everything that breaks it is upstream.
+    # Mondays. This repo can sit unchanged for months and everything that breaks it
+    # is upstream, so the push trigger alone would never fire.
     - cron: "0 15 * * 1"
   workflow_dispatch:
 
@@ -43,10 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Recorded rather than assumed. check-setup-mds.sh decides whether a machine is
-      # Windows from these, and it got that wrong once because Git Bash changed which
-      # triplet its bash reports. Three lines here means the next such change shows up
-      # in every job log instead of in a student's screenshot.
+      # check-setup-mds.sh decides whether a machine is Windows from these, and got it
+      # wrong once when Git Bash changed the triplet its bash reports. Logging them
+      # means the next such change shows up here rather than in a student's screenshot.
       - name: What shell is this
         run: |
           echo "uname -s : $(uname -s)"
@@ -57,10 +49,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          # Scoped to the root lock file. The default is `**/uv.lock`, which also
-          # matches mds-demo-assignment/uv.lock -- a project this workflow never installs.
-          # A change there would rekey the cache for the project that IS installed
-          # here, turning every run into a cache miss for no reason.
+          # Scoped to the root lock file: the default `**/uv.lock` also matches
+          # mds-demo-assignment/uv.lock, which this workflow never installs, so a
+          # change there would rekey the cache for no reason.
           cache-dependency-glob: uv.lock
 
       - uses: quarto-dev/quarto-actions/setup@v2
@@ -70,8 +61,7 @@ jobs:
           # renv.lock declares 4.6.1; a different minor makes renv warn on every run.
           r-version: "4.6"
 
-      # pandoc is not a Python package and uv cannot install it. The install guides
-      # have students install it from pandoc.org for exactly this reason.
+      # Not a Python package, so uv cannot install it. The guides say so too.
       - uses: r-lib/actions/setup-pandoc@v2
         with:
           pandoc-version: "3.10.2"
@@ -79,11 +69,8 @@ jobs:
       - name: Install TinyTeX
         uses: r-lib/actions/setup-tinytex@v2
 
-      # Driven through R's tinytex package rather than calling tlmgr directly.
-      # TeX Live ships `tlmgr.bat` on Windows and `tlmgr` everywhere else, so a
-      # bare `tlmgr install` is command-not-found on the Windows runner. The R
-      # package resolves that difference itself, and it is the same route the
-      # install guides put in front of students.
+      # Through R's tinytex rather than tlmgr directly: TeX Live ships `tlmgr.bat` on
+      # Windows and `tlmgr` elsewhere. Same route the install guides give students.
       - name: Add the LaTeX packages the install guides list
         run: |
           Rscript -e 'if (!requireNamespace("tinytex", quietly = TRUE)) install.packages("tinytex", repos = "https://cloud.r-project.org")'
@@ -101,22 +88,20 @@ jobs:
         run: Rscript -e 'renv::restore(prompt = FALSE)'
 
       # ------------------------------------------------- the repo's contract ---
-      # assignment-workflow-uv.md section 3 makes claims about this file that
-      # assignment repos are copied from. If they stop being true, every repo
-      # derived from it inherits the problem.
+      # "What your repo must contain" in assignment-workflow-uv.md makes claims about
+      # the file assignment repos are copied from. If they stop being true, every
+      # derived repo inherits it.
       - name: Check the pyproject contract
         run: make check-contract
 
-      # Reads files rather than rendering anything, so one platform is enough.
-      # Catches a fixture or target renamed in the code and not in the prose, which
-      # is how a rename reached everything except the script students run.
+      # Reads files rather than rendering, so one platform is enough. Catches a
+      # fixture or target renamed in the code and not in the prose.
       - name: Check the docs still describe the repo
         if: matrix.os == 'ubuntu-latest'
         run: make check-docs
 
-      # JupyterLab is installed but never started. What is worth asserting is that
-      # the server extensions resolve, which is the claim that justifies jupyterlab
-      # being a real dependency rather than a dev one.
+      # The claim that justifies jupyterlab being a real dependency rather than a dev
+      # one: the server extensions have to resolve in the kernel's own prefix.
       - name: JupyterLab extensions resolve
         run: |
           uv run jupyter --version
@@ -124,25 +109,17 @@ jobs:
           for ext in jupyterlab_git jupytext jupyterlab_spellchecker; do
             grep -q "$ext" /tmp/ext.txt || { echo "missing server extension: $ext"; exit 1; }
           done
-          # The name also appears in jupyter's own "Validating ..." line, so the greps
+          # The name also appears in jupyter's "Validating ..." line, so the greps
           # above pass on a disabled or erroring extension. These do not.
           if grep -qE "Error loading server extension|Validation failed|^ *X " /tmp/ext.txt; then
             echo "a server extension is installed but does not load"; exit 1
           fi
 
       # ------------------------------------------------------------- renders ---
-      # `render` rather than `all`, because `all` is the student-facing target and
-      # already wraps this in -k and swallows the exit code. Calling the inner target
-      # keeps the two flags visible here, where the reasoning for them lives.
-      #
-      # -k so that one broken route does not hide the others: which routes work is
-      # the information this job exists to produce.
-      #
-      # The exit code is deliberately ignored here. `make` returns non-zero if any
-      # target failed, and one is expected to -- a notebook containing a markdown
-      # table cannot be exported to PDF by nbconvert. `make check` is the gate, and
-      # it knows which failures are known limitations and which are not. Letting
-      # make fail the job here would mean encoding that list in two places.
+      # `render`, not `all`: `all` already wraps this in -k and swallows the exit code,
+      # so calling the inner target keeps both flags visible here. -k so one broken
+      # route does not hide the others, and the exit code is ignored because one route
+      # is expected to fail. `make check` is the gate that knows which.
       - name: Render every route
         run: make -k render || true
 
@@ -152,38 +129,34 @@ jobs:
       - name: Check the rendered documents contain what they should
         run: make check
 
-      # Only on Linux: the committed table is one platform's answer, and the WebPDF row
+      # Linux only: the committed table is one platform's answer and the WebPDF row
       # differs on Windows. This is what makes "generated, do not edit by hand" true.
-      - name: Check the README's table still matches the renders
+      - name: Check docs/render-matrix.md still matches the renders
         if: matrix.os == 'ubuntu-latest'
         run: make matrix-check
 
-      # Into the job summary rather than the log: it is a markdown table, and an
-      # instructor comparing what survives on Windows against what survives on
-      # macOS should not have to open three logs to do it.
+      # Into the job summary rather than the log: it is a markdown table, and
+      # comparing three platforms should not mean opening three logs.
       - name: Publish the feature matrix for this platform
         if: always()
         run: |
           echo "## What rendered on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
           make matrix >> "$GITHUB_STEP_SUMMARY" || true
 
-      # Section 7 of the guide warns that an autograding image built with
-      # `uv sync --no-dev` still needs a Python kernel, which is why ipykernel is
-      # named explicitly rather than left to arrive with jupyterlab. This runs last
-      # because it removes the dev group, and pypdf lives there.
+      # "Autograding and Docker" in the guide: an image built with `uv sync --no-dev`
+      # still needs a Python kernel, which is why ipykernel is named explicitly. Runs
+      # last because it removes the dev group, and pypdf lives there.
       - name: A Python kernel survives uv sync --no-dev
         run: |
           uv sync --no-dev
-          # --no-dev on every command too: a bare `uv run` re-syncs the project and puts
-          # the dev group back, so the environment under test would be the full one.
+          # --no-dev on every command too: a bare `uv run` re-syncs and puts the dev
+          # group back, so the environment under test would be the full one.
           uv run --no-dev python -c "import otter, pandas"
           uv run --no-dev jupyter kernelspec list 2>&1 | tee /tmp/kernels.txt
           grep -q python3 /tmp/kernels.txt || { echo "no Python kernel after --no-dev"; exit 1; }
 
-      # Serves this checkout so the setup check fetches THIS branch's
-      # check-python-installs.sh rather than the copy already published. Without it a
-      # pull request touching that script tests the released version, and that script is
-      # the first MDS code a new student ever runs.
+      # So the setup check fetches THIS branch's check-python-installs.sh rather than
+      # the published copy. That script is the first MDS code a new student runs.
       - name: Serve this branch to the setup check
         run: |
           uv run --no-sync python -m http.server 8127 --bind 127.0.0.1 > "$RUNNER_TEMP/http.log" 2>&1 &
@@ -195,39 +168,28 @@ jobs:
           curl -Ssf http://127.0.0.1:8127/check-python-installs.sh -o /dev/null \
             || { echo "the local server never came up"; cat "$RUNNER_TEMP/http.log"; exit 1; }
 
-      # The script students actually run, end to end, against the branch under test, on
-      # every platform. It used to be Linux only, on the reasoning that it is the same
-      # script everywhere. It is not: it has three substantially different platform
-      # branches, and the two that never ran are where the bugs were. Three student-facing
-      # defects shipped behind that `if:` -- the last one, Git Bash reporting
-      # OSTYPE=cygwin, was already true on this very runner and would have failed here on
-      # the first push.
+      # Every platform, not just Linux: the script has three substantially different
+      # platform branches, and three student-facing defects shipped while two of them
+      # never ran here.
       - name: Run the setup check the way a student does
         run: |
-          # The script clones the check project from GitHub. Pointing it at this checkout
-          # instead tests the code in the pull request rather than the code already
-          # released. `checkout -B` because actions/checkout leaves a detached HEAD on
-          # pull_request events, and `git clone` of a detached repository checks out
-          # nothing at all.
+          # Point the clone at this checkout so the PR's code is what runs. `checkout -B`
+          # because actions/checkout leaves a detached HEAD on pull_request events, and
+          # cloning a detached repository checks out nothing at all.
           git -C "$GITHUB_WORKSPACE" checkout -q -B ci-under-test
           cd "$RUNNER_TEMP"
           export MDS_PROJECT_URL="$GITHUB_WORKSPACE"
           export MDS_BASE_URL="http://127.0.0.1:8127"
           if [ "$RUNNER_OS" = "Windows" ]; then
-            # Python's pty is Unix-only, so the prompts cannot be driven here. Run it
-            # without a terminal instead: both prompts then take their safe default of
-            # no, which skips the Python and document-export sections but still exercises
-            # every line above them -- the OS detection and the system-program checks,
-            # which is exactly where the platform branches live and where all three of
-            # the defects above were. What Windows does NOT cover is asserted on Linux
-            # and macOS below.
+            # Python's pty is Unix-only, so the prompts cannot be driven here. Without
+            # a terminal both default to no, skipping the Python and document-export
+            # sections but still exercising the OS detection and program checks, which
+            # is where the platform branches live. The rest is covered on Linux/macOS.
             bash "$GITHUB_WORKSPACE/check-setup-mds.sh" < /dev/null || true
           else
-            # Driven through a pseudo-terminal by ci/run-setup-check.py, which answers each
-            # prompt only after seeing it. Both prompts are guarded by `[ -t 0 ]` and default
-            # to no without a terminal -- deliberately, so that a piped or scheduled run can
-            # never record a student's environment -- and feeding a pty from a plain pipe
-            # misaligns the answers, which was verified rather than assumed.
+            # A pseudo-terminal, because both prompts are guarded by `[ -t 0 ]` and
+            # default to no without one. ci/run-setup-check.py answers each prompt only
+            # after seeing it; feeding a pty from a plain pipe misaligns the answers.
             python3 "$GITHUB_WORKSPACE/ci/run-setup-check.py" \
               "$GITHUB_WORKSPACE/check-setup-mds.sh" || true
           fi
@@ -238,19 +200,16 @@ jobs:
         run: |
           log=$(cat "$RUNNER_TEMP/check-setup-mds.log")
 
-          # The log must arrive without escape codes. It used to carry them, so an
-          # instructor opening a submitted log read `^[[0;33m## System programs^[[0m`,
-          # and this job had to strip them before it could assert on anything.
+          # The log used to carry escape codes, so an instructor opening a submitted
+          # log read `^[[0;33m## System programs^[[0m`.
           if printf '%s' "$log" | grep -q "$(printf '\033')"; then
             echo "FAIL: the log a student submits still contains terminal escape codes"
             exit 1
           fi
 
           # ---- the platform branch actually taken -------------------------------
-          # This is the regression test for the defect that started this: Git Bash
-          # began reporting OSTYPE=cygwin, the msys test stopped matching, and every
-          # Windows check fell through to the Linux branch -- which shows up here, as
-          # an operating system the script could not name.
+          # Regression test: Git Bash began reporting OSTYPE=cygwin, the msys test
+          # stopped matching, and every Windows check fell through to the Linux branch.
           if grep -q "Operating system verison could not be detected" <<< "$log"; then
             echo "FAIL: the script did not recognise this platform, so it used the wrong"
             echo "      branch for every check below. The shell it saw:"
@@ -261,9 +220,8 @@ jobs:
             Windows)
               grep -qE "^Windows (10|11)" <<< "$log" \
                 || { echo "FAIL: the Windows branch was not taken"; grep "^Shell:" <<< "$log"; exit 1; }
-              # tlmgr is `tlmgr.bat` on Windows and `tlmgr` everywhere else, and the
-              # Linux branch looks for the wrong one. TinyTeX is installed above, so an
-              # OK here proves the Windows-specific lookup ran.
+              # tlmgr is `tlmgr.bat` on Windows; TinyTeX is installed above, so an OK
+              # here proves the Windows-specific lookup ran.
               grep -q "^OK.*tlmgr" <<< "$log" \
                 || { echo "FAIL: tlmgr not found; the tlmgr.bat lookup did not run"; exit 1; }
               ;;
@@ -277,21 +235,17 @@ jobs:
               ;;
           esac
 
-          # A fixture named by the script but absent from the project. This is the exact
-          # shape of the check-quarto.qmd rename that went unnoticed for three commits.
+          # A fixture named by the script but absent from the project -- the exact
+          # shape of a rename that once went unnoticed for three commits.
           if grep -q "could not be tested since check-" <<< "$log"; then
             echo "FAIL: the script names a fixture the project does not contain:"
             grep "could not be tested since check-" <<< "$log"
             exit 1
           fi
 
-          # RStudio and Positron are installed on no runner, so both are MISSING on all
-          # three platforms and the note explaining that a MISSING line for those two is
-          # ignorable when the application opens has to be there. Asserted as an
-          # implication rather than flatly, so that installing either one on a runner
-          # later turns this into a no-op instead of a failure -- but the note going
-          # quiet while the MISSING lines stay is caught, which is exactly what happens
-          # if the recording and the line ever drift apart again.
+          # Neither is installed on any runner, so both are MISSING everywhere and the
+          # note saying those two are ignorable has to be there. An implication rather
+          # than a flat assertion, so installing one later makes this a no-op.
           if grep -Eiq "^MISSING.*(rstudio|positron)" <<< "$log"; then
             grep -q "^NOTE .*marked MISSING above" <<< "$log" \
               || { echo "FAIL: RStudio/Positron reported MISSING with no note saying that"
@@ -299,9 +253,8 @@ jobs:
           fi
 
           # ---- everything below needed the prompts answered ---------------------
-          # Skipped on Windows, where Python's pty is unavailable, so the run there took
-          # the no-terminal path and never set the project up. Say so rather than
-          # letting a green Windows job imply more than it checked.
+          # Windows took the no-terminal path and never set the project up. Say so
+          # rather than letting a green Windows job imply more than it checked.
           if [ "$RUNNER_OS" = "Windows" ]; then
             grep -q "no terminal attached" <<< "$log" \
               || { echo "FAIL: expected the no-terminal path on Windows"; exit 1; }
@@ -311,8 +264,8 @@ jobs:
             exit 0
           fi
 
-          # The Quarto routes are the ones MDS asks students to use, so they are the ones
-          # worth asserting on rather than accepting the "one route is enough" verdict.
+          # The routes MDS asks students to use, rather than the script's own
+          # "one route is enough" verdict.
           for route in "quarto Typst PDF-generation was successful" \
                        "quarto LaTeX PDF-generation was successful"; do
             grep -q "$route" <<< "$log" || { echo "FAIL: $route"; exit 1; }
@@ -322,19 +275,16 @@ jobs:
           grep -q "Not recorded. You were asked" <<< "$log" \
             || { echo "FAIL: the environment section did not default to not-recorded"; exit 1; }
 
-          # The Python audit half must have come from this branch's copy, not the
-          # published one -- that is what MDS_BASE_URL pointing at the local server buys.
+          # From this branch's copy, not the published one -- what MDS_BASE_URL buys.
           grep -q "Python installations already on this computer" <<< "$log" \
             || { echo "FAIL: the Python installation report did not run"; exit 1; }
 
           echo "the setup check found its fixtures, rendered through Quarto, and recorded"
           echo "no environment variables"
 
-      # This server is started with `uv run`, so leaving it alive leaves a uv process
-      # holding the cache for the rest of the job -- including the post-job
-      # `uv cache prune`, which produced no output and was killed at exactly 300s the
-      # first time a cache miss made it run at all. Stopping the server is right
-      # regardless of whether it turns out to be what prune was waiting on.
+      # Started with `uv run`, so leaving it alive leaves a uv process holding the
+      # cache for the rest of the job -- including the post-job `uv cache prune`, which
+      # once hung to its 300s timeout.
       - name: Stop the local server
         if: always()
         run: |
@@ -351,7 +301,6 @@ jobs:
             render-checks/check-*.pdf
             render-checks/check-*.html
           # error, not warn: @actions/glob will not let a `*` cross a `/`, so an
-          # unprefixed glob silently matches nothing after the move. There is no run in
-          # which zero rendered documents is a correct outcome, so the last remaining
-          # silent path-dependency in this workflow becomes a red build instead.
+          # unprefixed glob silently matches nothing. Zero rendered documents is never
+          # a correct outcome.
           if-no-files-found: error

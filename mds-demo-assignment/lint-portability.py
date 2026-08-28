@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
 """Fail if a document uses a construct that some PDF route drops silently.
 
-Every route in the MDS toolchain exits 0 while discarding things it cannot set, so
-"it rendered" is not evidence that it rendered correctly. The three rules below come
-from ../assignment-workflow-uv.md, where each one is measured rather than asserted:
+Every route exits 0 while discarding what it cannot set, so "it rendered" is not
+evidence it rendered correctly. The three rules come from ../assignment-workflow-uv.md:
 
-  1. Maths goes inside $...$ or $$...$$. A bare \\begin{equation} or \\begin{align}
-     is a raw LaTeX environment that pandoc forwards untranslated, so Typst renders
-     nothing there. Use $$\\begin{aligned}...\\end{aligned}$$, and get numbering from
-     Quarto's own cross-reference syntax: $$ ... $$ {#eq-label}.
+  1. Maths goes inside $...$ or $$...$$. A bare \\begin{equation} or \\begin{align} is
+     forwarded untranslated, so Typst renders nothing. Use
+     $$\\begin{aligned}...\\end{aligned}$$ and number with Quarto's {#eq-label}.
 
   2. Nothing outside maths starts with a backslash. \\textbf{}, \\emph{}, \\footnote{}
-     and tabular reach the LaTeX PDF and vanish from Typst and HTML. Markdown
-     equivalents are parsed by pandoc and reach every route.
+     and tabular reach the LaTeX PDF and vanish from Typst and HTML.
 
-  3. Greek is written \\alpha, not as a literal character, and emoji are avoided in
-     anything destined for a LaTeX PDF. LaTeX has no glyph for either and drops them
-     without an error. $$ is not a shield: \\text{} switches back to the text font.
+  3. Greek is \\alpha, not a literal character, and emoji are avoided in anything
+     destined for a LaTeX PDF. $$ is not a shield: \\text{} switches back to text.
 
 This checks the SOURCE, not the output, on purpose. A construct that is dropped
 silently leaves no trace in the PDF to assert on -- the sentence around it is still
@@ -62,9 +58,7 @@ def blank(match: re.Match) -> str:
 def check(path: pathlib.Path) -> list[str]:
     problems = []
     for where, text in markdown_of(path):
-        # Code is exempt from all three rules: `\begin{align}` inside backticks is
-        # being talked about, not typeset, and a column literally named alpha has to
-        # be spelled the way the data spells it.
+        # Code is exempt: `\begin{align}` in backticks is talked about, not typeset.
         prose = INLINE_CODE.sub(blank, FENCE.sub(blank, text))
         maths_only = "".join(m.group(0) for m in MATHS.finditer(prose))
         outside = MATHS.sub(blank, prose)

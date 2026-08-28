@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
 """Check that the rendered documents contain what they are supposed to contain.
 
-Rendering is not the same as rendering correctly. Every LaTeX route in this
-project exits 0 while silently replacing characters it has no glyph for, so a
-check that only looks at exit codes or at whether a file exists passes on a
-broken document. This asserts on the extracted text instead.
-
-Routes do not all support the same characters. That is a measured fact about the
-toolchain rather than a bug in any one document, so the expectations differ per
-route and the differences are spelled out below.
+Every LaTeX route exits 0 while silently replacing characters it has no glyph for, so
+a check on exit codes or file existence passes on a broken document. This asserts on
+the extracted text instead, with expectations that differ per route.
 
 Usage:  python ci/assert-renders.py
 Exit:   0 if every present output holds what that route should hold, 1 otherwise.
 """
 import sys
 
-# Windows consoles default to a legacy codepage, and these scripts print the very
-# characters they are checking for. Without this, a report mentioning α dies with
-# UnicodeEncodeError on Windows and takes the whole check with it.
+# Windows consoles default to a legacy codepage, and this prints the very characters
+# it checks for: without this a report mentioning α dies with UnicodeEncodeError.
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
@@ -32,12 +26,10 @@ LATEX = "latex"   # accents and maths yes; Greek and emoji dropped
 TYPST = "typst"   # Greek and emoji yes; raw LaTeX environments dropped
 FULL = "full"     # HTML and the browser route: everything
 
-# Routes known not to produce output at all, with the reason. A route listed here
-# is reported as a known limitation rather than a failure -- but if it starts
-# working, that is reported too, because the limitation is what is documented.
-# Some limitations are platform specific, so an entry can name the platforms it
-# applies to. A route that fails somewhere it is not expected to still fails the
-# check, and a route that starts working anywhere is reported too.
+# Routes known not to produce output at all, with the reason, optionally scoped to the
+# platforms it applies to. Listed here means "known limitation, not a failure" -- and a
+# route that STARTS working is reported too, because the limitation is what is
+# documented. These strings are printed as the footnotes in docs/render-matrix.md.
 KNOWN_TO_FAIL = {
     "check-notebook-nbconvert-web.pdf": (
         {"win32"},
@@ -68,11 +60,9 @@ def is_known(name: str) -> bool:
     platforms, _ = entry
     return platforms is None or sys.platform in platforms
 
-# The fixtures and everything they render live here. ROUTES and KNOWN_TO_FAIL below
-# keep BARE filenames, because those are the labels the README's table and the failure
-# prose read; this is the only place the directory is ever joined on. Anchored to this
-# file rather than to the working directory, so the gate does not care where it is run
-# from.
+# ROUTES and KNOWN_TO_FAIL keep BARE filenames, because those are the labels the matrix
+# and the failure prose read. This is the only place the directory is joined on, and it
+# is anchored to this file so the gate does not care where it is run from.
 FIXTURE_DIR = "render-checks"
 _HERE = pathlib.Path(__file__).resolve().parent.parent / FIXTURE_DIR
 
@@ -85,8 +75,7 @@ def fixture(name: str) -> pathlib.Path:
 QMD_PY, QMD_R = "check-quarto-py.qmd", "check-quarto-r.qmd"
 IPYNB, RMD = "check-notebook.ipynb", "check-rmarkdown.Rmd"
 # The one construct JupyterLab's PDF export cannot handle, kept on its own so the
-# matrix can say both things: that the notebook route works, and exactly what
-# breaks it. If its LaTeX row ever turns green, nbconvert has fixed the bug.
+# matrix can say both that the notebook route works and exactly what breaks it.
 TABLE = "check-notebook-table.ipynb"
 
 # produced file -> (label, route class, the document it was rendered from)
@@ -103,8 +92,8 @@ ROUTES = {
     "check-notebook-nbconvert-latex.pdf": ("ipynb   -> nbconvert -> LaTeX",  LATEX, IPYNB),
     "check-notebook-nbconvert.html":      ("ipynb   -> nbconvert -> HTML",   FULL,  IPYNB),
     "check-notebook-nbconvert-web.pdf":   ("ipynb   -> nbconvert -> WebPDF", FULL,  IPYNB),
-    # Same exporter, called directly instead of through nbconvert's command line.
-    # Expected to work everywhere, including where the command line cannot.
+    # Same exporter, called directly rather than through nbconvert's command line,
+    # so it works everywhere the command line cannot.
     "check-notebook-nbconvert-api-web.pdf":
                                           ("ipynb   -> nbconvert API -> WebPDF", FULL, IPYNB),
     "check-rmarkdown-quarto-latex.pdf":   ("Rmd     -> Quarto -> LaTeX",     LATEX, RMD),
@@ -112,9 +101,8 @@ ROUTES = {
     "check-rmarkdown-quarto.html":        ("Rmd     -> Quarto -> HTML",      FULL,  RMD),
     "check-rmarkdown-rmarkdown-latex.pdf":("Rmd     -> rmarkdown -> LaTeX",  LATEX, RMD),
     "check-rmarkdown-rmarkdown.html":     ("Rmd     -> rmarkdown -> HTML",   FULL,  RMD),
-    # Three routes over one table, which is the smallest set that locates the fault:
-    # nbconvert's HTML is fine and Quarto's LaTeX is fine, so it is neither nbconvert
-    # nor LaTeX. It is nbconvert's LaTeX template.
+    # Three routes over one table locate the fault: nbconvert's HTML is fine and
+    # Quarto's LaTeX is fine, so it is nbconvert's LaTeX template.
     "check-notebook-table-nbconvert-latex.pdf":
                                           ("table   -> nbconvert -> LaTeX",  LATEX, TABLE),
     "check-notebook-table-nbconvert.html": ("table   -> nbconvert -> HTML",   FULL,  TABLE),
@@ -122,18 +110,15 @@ ROUTES = {
                                           ("table   -> Quarto -> LaTeX",     LATEX, TABLE),
 }
 
-# Most constructs behave by output format, but some follow the TOOL instead.
-# Quarto resolves a `{#eq-...}` cross-reference; nbconvert and rmarkdown print it as
-# literal text -- and nbconvert's HTML and Quarto's HTML are both FULL, so the route
-# class cannot tell them apart. A check may therefore name individual routes in its
-# supported set as well as route classes. Derived from ROUTES rather than restated,
-# so a new Quarto route joins it automatically.
+# Some constructs follow the TOOL, not the output format: Quarto resolves a
+# `{#eq-...}` cross-reference and nbconvert does not, yet both HTML routes are FULL. So
+# a check may name individual routes as well as classes. Derived from ROUTES, so a new
+# Quarto route joins automatically.
 QUARTO = {name for name, (label, _, _) in ROUTES.items() if "Quarto" in label}
 NBCONVERT = {name for name, (label, _, _) in ROUTES.items() if "nbconvert" in label}
 WEBPDF = {name for name, (label, _, _) in ROUTES.items() if "WebPDF" in label}
-# An .html file is read BEFORE MathJax runs; the WebPDF is the same page after it has.
-# For anything MathJax touches, those two are different measurements, and the WebPDF is
-# the one that says what a reader sees.
+# An .html file is read BEFORE MathJax runs; the WebPDF is the same page after. For
+# anything MathJax touches these are different measurements.
 HTML_FILE = {name for name in ROUTES if name.endswith(".html")}
 
 
@@ -147,15 +132,10 @@ def supports(supported: set, kind: str, name: str) -> bool:
     return kind in supported or name in supported
 
 
-# (label, needles, supported-by, source marker). A check passes if ANY needle is
-# present, which matters because the same character can extract differently per
-# engine: LaTeX sets maths in U+1D6FD MATHEMATICAL ITALIC SMALL BETA, not U+03B2.
-#
-# The source marker is what makes a check apply. A fixture that does not contain the
-# construct is not asked about it, so a new fixture needs no special case here: it is
-# measured for what it holds. Without this, splitting the markdown table into its own
-# file would have reported every other notebook route as having lost a table it was
-# never supposed to have.
+# (label, needles, supported-by, source marker). ANY needle passing is enough, because
+# the same character extracts differently per engine: LaTeX sets maths in U+1D6FD, not
+# U+03B2. The source marker is what makes a check apply, so a fixture is only asked
+# about constructs it holds and a new fixture needs no special case.
 CHECKS = [
     ("accented latin", ["Montréal"],        {LATEX, TYPST, FULL}, "Montréal"),
     ("degree sign",    ["°"],               {LATEX, TYPST, FULL}, "°C"),
@@ -167,11 +147,9 @@ CHECKS = [
     ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}, "| you want |"),
 
     # ---------------------------------------------------------- mathematics --
-    # Every needle below is a real statistical name occurring exactly once per
-    # fixture, inside the equation it measures. That is the rule this file exists
-    # to enforce: a needle that also appears in the prose beside the construct
-    # cannot fail, and that has already shipped here twice -- "unbiased" beside
-    # the inline equation, and "σ" in a table two sections below the numbered one.
+    # Each needle is a statistical name occurring exactly once per fixture, inside the
+    # equation it measures. A needle that also appears in the prose beside its
+    # construct cannot fail; audit_needles() below enforces that.
     ("inline maths",   ["OLS"],             {LATEX, TYPST, FULL}, r"\mathrm{OLS}"),
     ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}, r"\mathrm{RSS}"),
     ("aligned eqns",   ["Var"],             {LATEX, TYPST, FULL}, r"\mathrm{Var}"),
@@ -181,67 +159,43 @@ CHECKS = [
     ("bmatrix",        ["DES"],             {LATEX, TYPST, FULL}, r"\mathrm{DES}"),
     ("cases",          ["ReLU"],            {LATEX, TYPST, FULL}, r"\mathrm{ReLU}"),
     ("labelled eqn",   ["MAE"],             {LATEX, TYPST, FULL}, r"\mathrm{MAE}"),
-    # The cross-reference, as opposed to the equation it points at. Quarto turns
-    # `@eq-mse` into the words "Equation 1"; nbconvert and rmarkdown leave it as
-    # written. This is the check that needs route names rather than a class: the
-    # two HTML routes disagree, and both are FULL. The word "Equation" appears
-    # nowhere in any fixture source, so it can only come from a resolved
-    # reference -- audit_needles() below fails the build if that stops being true.
+    # The reference, not the equation it points at. Quarto turns `@eq-mse` into
+    # "Equation 1"; nbconvert and rmarkdown leave it as written, and both HTML routes
+    # are FULL -- which is why this one needs route names rather than a class.
     ("Quarto xref",    ["Equation"],        QUARTO,               "@eq-mse"),
-    # LaTeX's own labelling, which is the one construct that fails in BOTH
-    # directions: LaTeX resolves it, Typst discards it silently, and HTML prints
-    # the raw label on the page. The needle is that leak, so a tick here is bad
-    # news rather than good -- it is the only column in the table read that way,
-    # and the fixtures say so in prose beside the equation.
+    # LaTeX's own labelling: LaTeX resolves it, Typst discards it, HTML prints the raw
+    # label. The needle IS that leak, so a tick here is bad news -- the only column in
+    # the matrix read that way.
     ("literal \\eqref", ["eq:mae"],         HTML_FILE,            r"\eqref{eq:mae}"),
-    # ...and what a reader actually sees where MathJax has run. The label survives in
-    # the HTML file only because that file is read before any JavaScript executes; in
-    # a browser, and in the WebPDF which is a browser printing the same page, MathJax
-    # resolves \eqref against labels it does not have and prints "(???)". Visible,
-    # and meaningless. This is the pair that shows why an HTML file and a WebPDF are
-    # not interchangeable evidence.
+    # ...and what a reader sees once MathJax has run: it resolves \eqref against
+    # labels it does not have and prints "(???)". The pair shows why an HTML file and a
+    # WebPDF are not interchangeable evidence.
     ("unresolved xref", ["(???)"],          WEBPDF,               r"\eqref{eq:mae}"),
-    # Bare environments, not wrapped in `$$`. Pandoc never parses these as maths,
-    # so nothing downstream is handed an equation. LaTeX sets them because that is
-    # what they are written in; HTML sets them too -- measured, not assumed, since
-    # Quarto emits them as <span class="math display">\[...\]</span> and MathJax
-    # renders them in the browser. Typst has no MathJax behind it, so they vanish
-    # with no error. Compare `numbered eqn` above: the same maths inside `$$`,
-    # which every route sets.
+    # Bare environments, not wrapped in `$$`. Pandoc never parses these as maths.
+    # LaTeX sets them; HTML does too, via MathJax; Typst has no MathJax behind it, so
+    # they vanish with no error. Compare `numbered eqn`: the same maths inside `$$`.
     ("raw equation",   ["AIC"],             {LATEX, FULL},        r"\mathrm{AIC}"),
     ("raw align",      ["BIC"],             {LATEX, FULL},        r"\mathrm{BIC}"),
 
     # ------------------------------------------------- raw LaTeX in prose ----
-    # `RTFN` is spelled to avoid an `AW` pair on purpose. It began as `RAWFN`,
-    # which renders perfectly and extracts from the LaTeX PDF as "RA WFN" --
-    # lualatex kerns the pair and pypdf reports the kern as a space. A check that
-    # cannot see content demonstrably on the page is worse than no check, so a
-    # needle has to survive extraction as well as be unique.
-    # Pandoc drops raw LaTeX it cannot use, so Quarto's and rmarkdown's HTML lose this
-    # footnote entirely. nbconvert does not go through pandoc for markdown cells, so it
-    # prints the command itself onto the page -- visible LaTeX source in a student's
-    # exported notebook. Another difference the route class cannot express: nbconvert's
-    # HTML and Quarto's HTML are both FULL and they disagree.
+    # `RTFN` avoids an `AW` pair on purpose: as `RAWFN` it extracted from the LaTeX PDF
+    # as "RA WFN", because lualatex kerns the pair and pypdf reports the kern as a
+    # space. A needle must survive extraction as well as be unique.
+    # Pandoc drops raw LaTeX it cannot use, so Quarto's and rmarkdown's HTML lose the
+    # footnote. nbconvert skips pandoc for markdown cells and prints the command itself
+    # onto the page -- another disagreement between two FULL routes.
     ("raw LaTeX",      ["RTFN"],            {LATEX} | NBCONVERT,  r"\footnote{RTFN"),
     ("markdown note",  ["MDFN"],            {LATEX, TYPST, FULL}, "^[MDFN"),
-    # `$$` is not a shield: \text{} switches back to the text font mid-equation, so
-    # a literal Greek character there is dropped by LaTeX exactly as it would be in
-    # prose, inside an equation whose subscript typesets perfectly beside it. The
-    # letter is ξ rather than α so the needle cannot be satisfied by the α in the
-    # character line two paragraphs above; TXTGRK and CMDGRK prove both equations
-    # rendered at all.
+    # `$$` is not a shield: \text{} switches back to the text font, so a literal Greek
+    # character there is dropped by LaTeX exactly as in prose. ξ rather than α, so the
+    # needle cannot be satisfied by the α on the character line above.
     ("Greek in text{}", ["ξ"],              {TYPST, FULL},        r"\text{ξ}"),
 ]
 
-# A needle that also appears in the prose beside its construct CANNOT FAIL: the check
-# passes on the prose whatever happened to the thing under test. That has shipped here
-# three times now -- "unbiased" beside the inline equation, "σ" in a table two sections
-# below the numbered one, and "MDEQ" quoted in a "what you should see" paragraph. The
-# rule was written down each time and broken again the next time, so it is enforced
-# here instead of remembered.
-#
-# A needle may legitimately repeat when every occurrence IS the construct under test.
-# Those are listed, with the reason, so that adding one is a deliberate act.
+# A needle that also appears in the prose beside its construct CANNOT FAIL. That has
+# shipped three times -- "unbiased", "σ", "MDEQ" -- so it is enforced rather than
+# remembered. A needle may legitimately repeat when every occurrence IS the construct;
+# those are listed with a reason, so adding one is deliberate.
 NEEDLE_MAY_REPEAT = {
     "α": "the character line and the 'as literal text' bullet are both literal Greek "
          "in prose, which is exactly what this needle measures",
@@ -252,12 +206,9 @@ NEEDLE_MAY_REPEAT = {
               "whether the label leaks into the output as text",
 }
 
-# Strings that must not appear in any fixture SOURCE, because a check reads them as
-# evidence that a renderer produced something.
-# Needles for things a RENDERER generates, never something an author writes. The
-# uniqueness rule above cannot catch these: they occur once in the source, and that
-# one occurrence is the prose, so every route reports success. Both entries below
-# were added after exactly that happened.
+# Strings a RENDERER generates, never something an author writes, so they must not
+# appear in any fixture SOURCE. The uniqueness rule cannot catch these: one occurrence
+# in the prose makes every route report success. Both were added after that happened.
 FORBIDDEN_IN_SOURCE = {
     "Equation": "Quarto writes this word when it resolves an @eq- cross-reference. In "
                 "a fixture source it would satisfy the `Quarto xref` needle without "
@@ -289,7 +240,7 @@ def audit_needles() -> list[str]:
     return problems
 
 
-# The image is not text, so it needs a probe of its own rather than a needle.
+# Not text, so it needs a probe rather than a needle.
 IMAGE_ROUTES = {LATEX, TYPST, FULL}
 
 
@@ -311,9 +262,8 @@ _source_cache: dict[str, str] = {}
 def source_text(name: str) -> str:
     """The prose and code of a fixture, as written rather than as rendered.
 
-    A notebook keeps its text in JSON, so reading the file raw would match markers
-    against escaped source lines and metadata. Cached because every route asks the
-    same handful of files the same questions.
+    A notebook keeps its text in JSON, so reading it raw would match markers against
+    escaped source lines and metadata. Cached: every route asks the same questions.
     """
     if name not in _source_cache:
         raw = fixture(name).read_text(encoding="utf-8")
@@ -336,8 +286,8 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
-    # Before asking whether the outputs are right, ask whether the questions are
-    # answerable. A contaminated needle makes every route below report success.
+    # A contaminated needle makes every route below report success, so check the
+    # questions before the answers.
     if flaws := audit_needles():
         print("The checks themselves are broken:")
         for flaw in flaws:
@@ -349,9 +299,8 @@ def main() -> int:
 
     for name, (label, kind, source) in ROUTES.items():
         path = fixture(name)
-        # An output older than the document it came from is last month's answer. make
-        # rebuilds nothing when the outputs are newer than their sources, so without this
-        # a re-run on a since-broken machine re-reads the old files and reports success.
+        # An output older than its source is last month's answer: make rebuilds
+        # nothing, so a re-run on a since-broken machine would report success.
         if path.exists() and path.stat().st_mtime < fixture(source).stat().st_mtime:
             stale.append((label, name, source))
             print(f"  STALE    {label:<24} {name} is older than {source}")

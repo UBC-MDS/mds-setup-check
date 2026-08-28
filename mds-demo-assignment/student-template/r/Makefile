@@ -1,8 +1,7 @@
 # Everything you need for this assignment. Run `make` on its own to see the list.
 #
-# R packages are NOT managed per project the way Python ones are. They come from the
-# library the MDS install guides set up, so there is no lock file here and `make setup`
-# checks rather than installs.
+# R packages are not managed per project: they come from the library the MDS install
+# guides set up, so there is no lock file and `make setup` checks rather than installs.
 
 .PHONY: commands setup pdf html all clean
 
@@ -15,12 +14,9 @@ setup:  ## Check you have the R packages this lab needs
 	  if (length(miss)) stop("missing R packages: ", paste(miss, collapse = ", "), \
 	  ". Run the MDS setup check, which installs them.") else cat("R packages OK\n")'
 
-# Typst rather than LaTeX, deliberately. Both make a PDF; only Typst keeps emoji and
-# pasted Greek letters. Section 7 has the table. RStudio's Knit button takes the LaTeX
-# route, which is why it is not what this target does.
-#
-# knitr always executes the chunks, so unlike the Python lab there is no --execute flag
-# to remember: rendering is always a clean run from the top.
+# Typst rather than LaTeX, because only Typst keeps emoji and pasted Greek. RStudio's
+# Knit button takes the LaTeX route, which is why it is not what this does. knitr always
+# executes the chunks, so there is no --execute flag to remember.
 pdf: lab0b.pdf  ## Render the PDF you hand in (via Typst)
 lab0b.pdf: lab0b.Rmd
 	quarto render lab0b.Rmd --to typst

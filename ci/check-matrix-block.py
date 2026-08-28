@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Fail if the README's table has drifted from what the renders actually produce.
+"""Fail if docs/render-matrix.md has drifted from what the renders actually produce.
 
-The README says the block is generated and must not be edited by hand. Nothing enforced
-that, so the table could quietly stop describing the toolchain -- which is the exact
-failure this repository exists to catch, one level up.
-
-The comparison is only meaningful on the platform the committed table was generated on.
-One route differs by operating system, so CI runs this on Linux alone.
+The block says it is generated and must not be edited by hand; this enforces it. Only
+meaningful on the platform the committed table was generated on -- one route differs by
+operating system, so CI runs this on Linux alone.
 """
 import io, pathlib, sys, contextlib, importlib.util
 
@@ -17,6 +14,7 @@ for stream in (sys.stdout, sys.stderr):
         pass
 
 HERE = pathlib.Path(__file__).resolve().parent
+DOC = HERE.parent / "docs" / "render-matrix.md"
 BEGIN, END = "<!-- begin matrix", "<!-- end matrix -->"
 
 
@@ -37,10 +35,9 @@ def generated() -> str:
 
 
 def main() -> int:
-    # A path bug in the generator makes every route look unrendered, and a diff of
-    # two equally-wrong tables still matches. So check the shape of the generated
-    # table before comparing it to anything: more "no file" notes than there are
-    # known limitations means the generator is not finding the rendered files.
+    # A path bug in the generator makes every route look unrendered, and a diff of two
+    # equally-wrong tables still matches. So check the shape first: more "no file"
+    # notes than known limitations means the generator is not finding the files.
     out = generated()
     warned = out.count("produces no file at all")
     allowed = sum(1 for n in _ar.KNOWN_TO_FAIL if _ar.is_known(n))
@@ -51,18 +48,19 @@ def main() -> int:
         print("if they are there, the fixture directory join is wrong.")
         return 1
 
-    readme = (HERE.parent / "README.md").read_text(encoding="utf-8")
-    start = readme.index("\n", readme.index(BEGIN)) + 1
-    committed = readme[start:readme.index(END)].strip()
+    doc = DOC.read_text(encoding="utf-8")
+    start = doc.index("\n", doc.index(BEGIN)) + 1
+    committed = doc[start:doc.index(END)].strip()
     if committed == out:
-        print("The README's table matches what the renders produce.")
+        print(f"{DOC.name} matches what the renders produce.")
         return 0
-    print("The README's table no longer matches what the renders produce.")
+    print(f"{DOC.name} no longer matches what the renders produce.")
     print("Run `make matrix` and paste the output between the matrix markers.")
     print()
     import difflib
     for line in difflib.unified_diff(committed.splitlines(), out.splitlines(),
-                                     "README.md", "make matrix", lineterm="", n=1):
+                                     "docs/render-matrix.md", "make matrix",
+                                     lineterm="", n=1):
         print(line)
     return 1
 
