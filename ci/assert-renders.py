@@ -74,11 +74,6 @@ IPYNB, RMD = "check-notebook.ipynb", "check-rmarkdown.Rmd"
 # matrix can say both things: that the notebook route works, and exactly what
 # breaks it. If its LaTeX row ever turns green, nbconvert has fixed the bug.
 TABLE = "check-notebook-table.ipynb"
-# The mirror image of TABLE, and isolated for the same reason. It carries the two
-# constructs pandoc FORWARDS rather than parses, which fail in opposite directions:
-# Typst discards the raw \footnote, LaTeX discards the literal Greek inside \text{}.
-# In a full fixture each would have looked like a broken route.
-RAW = "check-raw-passthrough.qmd"
 
 # produced file -> (label, route class, the document it was rendered from)
 ROUTES = {
@@ -111,12 +106,32 @@ ROUTES = {
     "check-notebook-table-nbconvert.html": ("table   -> nbconvert -> HTML",   FULL,  TABLE),
     "check-notebook-table-quarto-latex.pdf":
                                           ("table   -> Quarto -> LaTeX",     LATEX, TABLE),
-    "check-raw-passthrough-quarto-latex.pdf":
-                                          ("raw     -> Quarto -> LaTeX",     LATEX, RAW),
-    "check-raw-passthrough-quarto-typst.pdf":
-                                          ("raw     -> Quarto -> Typst",     TYPST, RAW),
-    "check-raw-passthrough-quarto.html":  ("raw     -> Quarto -> HTML",      FULL,  RAW),
 }
+
+# Most constructs behave by output format, but some follow the TOOL instead.
+# Quarto resolves a `{#eq-...}` cross-reference; nbconvert and rmarkdown print it as
+# literal text -- and nbconvert's HTML and Quarto's HTML are both FULL, so the route
+# class cannot tell them apart. A check may therefore name individual routes in its
+# supported set as well as route classes. Derived from ROUTES rather than restated,
+# so a new Quarto route joins it automatically.
+QUARTO = {name for name, (label, _, _) in ROUTES.items() if "Quarto" in label}
+NBCONVERT = {name for name, (label, _, _) in ROUTES.items() if "nbconvert" in label}
+WEBPDF = {name for name, (label, _, _) in ROUTES.items() if "WebPDF" in label}
+# An .html file is read BEFORE MathJax runs; the WebPDF is the same page after it has.
+# For anything MathJax touches, those two are different measurements, and the WebPDF is
+# the one that says what a reader sees.
+HTML_FILE = {name for name in ROUTES if name.endswith(".html")}
+
+
+def supports(supported: set, kind: str, name: str) -> bool:
+    """Whether this route is expected to reproduce the construct.
+
+    `supported` holds route classes (LATEX/TYPST/FULL) and/or specific output
+    filenames. Naming routes is the escape hatch for a construct whose behaviour
+    follows the tool rather than the output format.
+    """
+    return kind in supported or name in supported
+
 
 # (label, needles, supported-by, source marker). A check passes if ANY needle is
 # present, which matters because the same character can extract differently per
@@ -132,46 +147,133 @@ CHECKS = [
     ("degree sign",    ["°"],               {LATEX, TYPST, FULL}, "°C"),
     ("en dash",        ["–"],               {LATEX, TYPST, FULL}, "10 – 20"),
     ("curly quotes",   ["“", "”"],          {LATEX, TYPST, FULL}, "“curly quotes”"),
-    # OLS appears in the fixtures only inside the inline equation, so this check fails
-    # if the maths stops being typeset. It used to accept "unbiased", which is the prose
-    # next to the equation, and so passed whatever happened to the maths.
+    ("middot",         ["·"],               {LATEX, TYPST, FULL}, " · "),
+    ("literal Greek",  ["α"],               {TYPST, FULL},        "α β γ"),
+    ("emoji",          ["✅", "📊"],         {TYPST, FULL},        "📊"),
+    ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}, "| you want |"),
+
+    # ---------------------------------------------------------- mathematics --
+    # Every needle below is a real statistical name occurring exactly once per
+    # fixture, inside the equation it measures. That is the rule this file exists
+    # to enforce: a needle that also appears in the prose beside the construct
+    # cannot fail, and that has already shipped here twice -- "unbiased" beside
+    # the inline equation, and "σ" in a table two sections below the numbered one.
     ("inline maths",   ["OLS"],             {LATEX, TYPST, FULL}, r"\mathrm{OLS}"),
     ("display eqn",    ["RSS"],             {LATEX, TYPST, FULL}, r"\mathrm{RSS}"),
     ("aligned eqns",   ["Var"],             {LATEX, TYPST, FULL}, r"\mathrm{Var}"),
-    ("literal Greek",  ["α"],               {TYPST, FULL},        "α β γ"),
-    ("emoji",          ["✅", "📊"],         {TYPST, FULL},        "📊"),
-    # The four the README's table publishes and the gate used to leave ungated. An
-    # unchecked column is a column that can quietly stop being true.
-    ("middot",         ["·"],               {LATEX, TYPST, FULL}, " · "),
-    # MSE for the same reason as OLS above: the numbered equation used to be checked
-    # with "σ", which every fixture also prints as prose two sections further down, so
-    # on the routes that keep literal Greek the check passed whether or not the
-    # equation was typeset at all. Keying on a token that exists only inside the
-    # equation immediately turned up what that was hiding -- Typst is NOT in the
-    # supported set below, because a bare \begin{equation} is a raw LaTeX environment
-    # that pandoc passes through untranslated, exactly like the \begin{align} the
-    # fixtures already warn about. Typst receives no maths and renders nothing, with
-    # no error. LaTeX and HTML both set it correctly.
-    ("numbered eqn",   ["MSE"],             {LATEX, FULL},        r"\mathrm{MSE}"),
-    ("markdown table", ["you want", "write this"], {LATEX, TYPST, FULL}, "| you want |"),
-    # The three below are measured only on check-raw-passthrough.qmd. Pandoc parses
-    # markdown into a format-neutral document and writes each format from that, so
-    # anything it parses survives every route; anything it cannot parse is forwarded
-    # to LaTeX verbatim and dropped everywhere else, silently.
-    #
-    # `RTFN` is spelled to avoid an `AW` pair on purpose. It began as `RAWFN`, which
-    # renders perfectly and extracts from the LaTeX PDF as "RA WFN" -- lualatex kerns
-    # the pair and pypdf reports the kern as a space. A check that cannot see content
-    # that is demonstrably on the page is worse than no check, so needles here have to
-    # survive extraction as well as be unique.
-    ("raw LaTeX",      ["RTFN"],            {LATEX},              r"\footnote{RTFN"),
+    ("numbered eqn",   ["MSE"],             {LATEX, TYPST, FULL}, r"\mathrm{MSE}"),
+    ("eqn inside $$",  ["SSE"],             {LATEX, TYPST, FULL}, r"\mathrm{SSE}"),
+    ("pmatrix",        ["COV"],             {LATEX, TYPST, FULL}, r"\mathrm{COV}"),
+    ("bmatrix",        ["DES"],             {LATEX, TYPST, FULL}, r"\mathrm{DES}"),
+    ("cases",          ["ReLU"],            {LATEX, TYPST, FULL}, r"\mathrm{ReLU}"),
+    ("labelled eqn",   ["MAE"],             {LATEX, TYPST, FULL}, r"\mathrm{MAE}"),
+    # The cross-reference, as opposed to the equation it points at. Quarto turns
+    # `@eq-mse` into the words "Equation 1"; nbconvert and rmarkdown leave it as
+    # written. This is the check that needs route names rather than a class: the
+    # two HTML routes disagree, and both are FULL. The word "Equation" appears
+    # nowhere in any fixture source, so it can only come from a resolved
+    # reference -- audit_needles() below fails the build if that stops being true.
+    ("Quarto xref",    ["Equation"],        QUARTO,               "@eq-mse"),
+    # LaTeX's own labelling, which is the one construct that fails in BOTH
+    # directions: LaTeX resolves it, Typst discards it silently, and HTML prints
+    # the raw label on the page. The needle is that leak, so a tick here is bad
+    # news rather than good -- it is the only column in the table read that way,
+    # and the fixtures say so in prose beside the equation.
+    ("literal \\eqref", ["eq:mae"],         HTML_FILE,            r"\eqref{eq:mae}"),
+    # ...and what a reader actually sees where MathJax has run. The label survives in
+    # the HTML file only because that file is read before any JavaScript executes; in
+    # a browser, and in the WebPDF which is a browser printing the same page, MathJax
+    # resolves \eqref against labels it does not have and prints "(???)". Visible,
+    # and meaningless. This is the pair that shows why an HTML file and a WebPDF are
+    # not interchangeable evidence.
+    ("unresolved xref", ["(???)"],          WEBPDF,               r"\eqref{eq:mae}"),
+    # Bare environments, not wrapped in `$$`. Pandoc never parses these as maths,
+    # so nothing downstream is handed an equation. LaTeX sets them because that is
+    # what they are written in; HTML sets them too -- measured, not assumed, since
+    # Quarto emits them as <span class="math display">\[...\]</span> and MathJax
+    # renders them in the browser. Typst has no MathJax behind it, so they vanish
+    # with no error. Compare `numbered eqn` above: the same maths inside `$$`,
+    # which every route sets.
+    ("raw equation",   ["AIC"],             {LATEX, FULL},        r"\mathrm{AIC}"),
+    ("raw align",      ["BIC"],             {LATEX, FULL},        r"\mathrm{BIC}"),
+
+    # ------------------------------------------------- raw LaTeX in prose ----
+    # `RTFN` is spelled to avoid an `AW` pair on purpose. It began as `RAWFN`,
+    # which renders perfectly and extracts from the LaTeX PDF as "RA WFN" --
+    # lualatex kerns the pair and pypdf reports the kern as a space. A check that
+    # cannot see content demonstrably on the page is worse than no check, so a
+    # needle has to survive extraction as well as be unique.
+    # Pandoc drops raw LaTeX it cannot use, so Quarto's and rmarkdown's HTML lose this
+    # footnote entirely. nbconvert does not go through pandoc for markdown cells, so it
+    # prints the command itself onto the page -- visible LaTeX source in a student's
+    # exported notebook. Another difference the route class cannot express: nbconvert's
+    # HTML and Quarto's HTML are both FULL and they disagree.
+    ("raw LaTeX",      ["RTFN"],            {LATEX} | NBCONVERT,  r"\footnote{RTFN"),
     ("markdown note",  ["MDFN"],            {LATEX, TYPST, FULL}, "^[MDFN"),
-    # `$$` is not a shield: \text{} switches back to the text font mid-equation, so a
-    # literal Greek character there is dropped by LaTeX exactly as it would be in
-    # prose -- inside an equation whose subscript typesets perfectly beside it. The
-    # TXTGRK and CMDGRK subscripts are what prove both equations rendered at all.
-    ("Greek in text{}", ["α"],              {TYPST, FULL},        r"\text{α}"),
+    # `$$` is not a shield: \text{} switches back to the text font mid-equation, so
+    # a literal Greek character there is dropped by LaTeX exactly as it would be in
+    # prose, inside an equation whose subscript typesets perfectly beside it. The
+    # letter is ξ rather than α so the needle cannot be satisfied by the α in the
+    # character line two paragraphs above; TXTGRK and CMDGRK prove both equations
+    # rendered at all.
+    ("Greek in text{}", ["ξ"],              {TYPST, FULL},        r"\text{ξ}"),
 ]
+
+# A needle that also appears in the prose beside its construct CANNOT FAIL: the check
+# passes on the prose whatever happened to the thing under test. That has shipped here
+# three times now -- "unbiased" beside the inline equation, "σ" in a table two sections
+# below the numbered one, and "MDEQ" quoted in a "what you should see" paragraph. The
+# rule was written down each time and broken again the next time, so it is enforced
+# here instead of remembered.
+#
+# A needle may legitimately repeat when every occurrence IS the construct under test.
+# Those are listed, with the reason, so that adding one is a deliberate act.
+NEEDLE_MAY_REPEAT = {
+    "α": "the character line and the 'as literal text' bullet are both literal Greek "
+         "in prose, which is exactly what this needle measures",
+    "·": "the character line separates its items with middots, so all seven occurrences "
+         "ARE the construct -- if middots stopped rendering they would all go together",
+    "eq:mae": "\\label{eq:mae} and \\eqref{eq:mae} are the two halves of one "
+              "construct: LaTeX's own cross-referencing, which the check measures by "
+              "whether the label leaks into the output as text",
+}
+
+# Strings that must not appear in any fixture SOURCE, because a check reads them as
+# evidence that a renderer produced something.
+# Needles for things a RENDERER generates, never something an author writes. The
+# uniqueness rule above cannot catch these: they occur once in the source, and that
+# one occurrence is the prose, so every route reports success. Both entries below
+# were added after exactly that happened.
+FORBIDDEN_IN_SOURCE = {
+    "Equation": "Quarto writes this word when it resolves an @eq- cross-reference. In "
+                "a fixture source it would satisfy the `Quarto xref` needle without "
+                "any reference having been resolved.",
+    "(???)": "MathJax writes this when it cannot resolve an \\eqref. Describing it in "
+             "prose -- rather than letting a renderer produce it -- made all 21 routes "
+             "report the marker and the `unresolved xref` check pass everywhere.",
+}
+
+
+def audit_needles() -> list[str]:
+    """Check the checks: every needle must be able to fail on every fixture."""
+    problems = []
+    for src in sorted({s for _, _, s in ROUTES.values()}):
+        written = source_text(src)
+        for bad, why in FORBIDDEN_IN_SOURCE.items():
+            if bad in written:
+                problems.append(f"{src} contains {bad!r} in its source. {why}")
+        for desc, needles, _, marker in CHECKS:
+            if marker not in written:
+                continue
+            for n in needles:
+                if written.count(n) > 1 and n not in NEEDLE_MAY_REPEAT:
+                    problems.append(
+                        f"{src}: the {desc!r} needle {n!r} appears "
+                        f"{written.count(n)} times in the source, so the check cannot "
+                        f"fail -- it would pass on the prose. Rename it, or add it to "
+                        f"NEEDLE_MAY_REPEAT with a reason.")
+    return problems
+
 
 # The image is not text, so it needs a probe of its own rather than a needle.
 IMAGE_ROUTES = {LATEX, TYPST, FULL}
@@ -220,6 +322,15 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
+    # Before asking whether the outputs are right, ask whether the questions are
+    # answerable. A contaminated needle makes every route below report success.
+    if flaws := audit_needles():
+        print("The checks themselves are broken:")
+        for flaw in flaws:
+            print(f"  - {flaw}")
+        print("\nNo route was checked, because the result would not mean anything.")
+        return 1
+
     missing, broken, ok, stale = [], [], [], []
 
     for name, (label, kind, source) in ROUTES.items():
@@ -256,9 +367,10 @@ def main() -> int:
             if marker not in written:
                 continue          # this fixture does not contain the construct
             present = any(n in body for n in needles)
-            if kind in supported and not present:
+            expected = supports(supported, kind, name)
+            if expected and not present:
                 problems.append(f"missing {desc} ({needles[0]!r})")
-            elif kind not in supported and present:
+            elif not expected and present:
                 problems.append(
                     f"{desc} ({needles[0]!r}) now renders -- this route was not "
                     f"expected to support it; update ci/assert-renders.py")

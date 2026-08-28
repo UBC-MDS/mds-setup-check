@@ -36,15 +36,23 @@ _PRETTY = {"LaTeX": "LaTeX PDF", "Typst": "Typst PDF"}
 ROUTES = []
 for _name, (_label, _kind, _src) in _ar.ROUTES.items():
     _, _tool, _out = (part.strip() for part in _label.split("->"))
-    ROUTES.append((_src, _tool, _PRETTY.get(_out, _out), _name))
+    ROUTES.append((_src, _tool, _PRETTY.get(_out, _out), _name, _kind))
 
 # The full feature list, not grouped: a column that always agrees is still worth
 # showing, because the day it stops agreeing is the day this table earns its keep.
-# (label, needles, source marker). The marker is what decides whether a fixture is
-# asked about a feature at all -- a document with no markdown table is not failing
-# to render one.
-FEATURES = [(desc, needles, marker) for desc, needles, _, marker in _ar.CHECKS]
-FEATURES.append(("image", [], "mds-logo.png"))
+# (label, needles, supported-by, source marker). The marker is what decides whether a
+# fixture is asked about a feature at all -- a document with no markdown table is not
+# failing to render one.
+#
+# The supported set is carried through rather than discarded, which is what lets this
+# table tell "this route was never meant to do that" apart from "this is broken". It
+# used to drop it, so a raw \begin{equation} on the Typst row and a genuinely broken
+# renderer both printed the same cross, and a reader had no way to know which was
+# which. That is the same conflation that made the old `numbered eqn` column read as a
+# limitation of Typst.
+FEATURES = [(desc, needles, supported, marker)
+            for desc, needles, supported, marker in _ar.CHECKS]
+FEATURES.append(("image", [], _ar.IMAGE_ROUTES, "mds-logo.png"))
 
 # The image probe and the source reader both live in assert-renders.py, so the gate
 # and this table agree on what "the image is there" and "the fixture contains it" mean.
@@ -62,45 +70,79 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
-    YES, NO, NA, WARN = "✅", "❌", "—", "⚠️"
+    # Four outcomes, not two. A cross used to mean both "this renderer is broken" and
+    # "this construct was never going to survive this route", which are opposite
+    # readings: one is a bug to chase, the other is the documented behaviour of the
+    # toolchain and the reason to pick a different route. Anyone reading a cross beside
+    # `raw equation` on the Typst row and concluding Typst is deficient has been misled
+    # by the table rather than informed by it.
+    YES = "✅"    # present, and this route is expected to reproduce it
+    BYDES = "⬜"  # absent, and this route is NOT expected to -- by design, not a fault
+    NO = "❌"     # absent, but this route WAS expected to: something is broken
+    NEW = "❗"    # present, but this route was not expected to: the gate is out of date
+    NA = "—"      # the fixture does not contain the construct at all
+    WARN = "⚠️"   # the route produced no file at all; see the note under the table
+
+    print("Legend: "
+          f"{YES} works · "
+          f"{BYDES} not supported by this route, by design · "
+          f"{NO} **broken** -- expected here and missing · "
+          f"{NEW} unexpectedly present, the gate needs updating · "
+          f"{NA} the fixture does not contain it · "
+          f"{WARN} no file produced")
+
+    def icon(present: bool, expected: bool) -> str:
+        if present:
+            return YES if expected else NEW
+        return NO if expected else BYDES
+
     by_ext = {}
     for route in ROUTES:
         by_ext.setdefault(pathlib.Path(route[0]).suffix, []).append(route)
 
     for ext, routes in by_ext.items():
-        sources = sorted({src for src, _, _, _ in routes})
+        sources = sorted({r[0] for r in routes})
         # One table per extension keeps them narrow, but .qmd has two fixtures
         # (one per language), so that table needs a column saying which.
         multi = len(sources) > 1
         print(f"\n**`{ext}`**" + ("" if multi else f" — `{sources[0]}`") + "\n")
         lead = (["input"] if multi else []) + ["rendered by", "output"]
-        heads = [f for f, _, _ in FEATURES]
+        heads = [f for f, _, _, _ in FEATURES]
         print("| " + " | ".join(lead + heads) + " |")
         print("|" + "---|" * (len(lead) + len(heads)))
 
         notes = []
-        for src, tool, out, name in routes:
+        for src, tool, out, name, kind in routes:
             path = pathlib.Path(name)
             row = ([f"`{src}`"] if multi else []) + [tool, out]
             written = source_text(src)
             # A dash means the fixture does not contain the construct, which is a
             # different statement from a cross. Without the distinction the
             # table-only fixture would read as a row of failures.
-            applies = [marker in written for _, _, marker in FEATURES]
+            applies = [marker in written for _, _, _, marker in FEATURES]
+            expected = [_ar.supports(sup, kind, name) for _, _, sup, _ in FEATURES]
             if not path.exists():
+                # Nothing was produced, so no construct can be present. Every
+                # applicable cell points at the note under the table rather than
+                # carrying a cross of its own -- but only when the route is a
+                # DOCUMENTED limitation. A route that fails without being in
+                # KNOWN_TO_FAIL keeps its crosses, so that "❌ anywhere in this table
+                # means something is broken right now" stays true.
                 notes.append((name, tool, out))
                 row[-2] = f"{tool} {WARN}"
-                print("| " + " | ".join(
-                    row + [NO if a else NA for a in applies]) + " |")
+                blank = WARN if _ar.is_known(name) else NO
+                print("| " + " | ".join(row + [
+                    (blank if e else BYDES) if a else NA
+                    for a, e in zip(applies, expected)]) + " |")
                 continue
             body = text_of(path)
-            for (feat, needles, _), applicable in zip(FEATURES, applies):
+            for (feat, needles, _, _), applicable, exp in zip(FEATURES, applies, expected):
                 if not applicable:
                     row.append(NA)
                 elif not needles:                       # the image
-                    row.append(YES if has_image(path) else NO)
+                    row.append(icon(has_image(path), exp))
                 else:
-                    row.append(YES if any(n in body for n in needles) else NO)
+                    row.append(icon(any(n in body for n in needles), exp))
             print("| " + " | ".join(row) + " |")
 
         for name, tool, out in notes:
