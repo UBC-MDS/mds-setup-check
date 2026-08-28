@@ -3,8 +3,6 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Render output
-*.pdf
-*.html
 /.quarto/
 **/*.quarto_ipynb
 
