@@ -262,6 +262,13 @@ This project doubles as the reference shape for an MDS assignment repo.
 must declare, why `uv.lock` is committed, how PDFs get produced, and the failure
 modes students will report.
 
+[`demo-assignment/`](demo-assignment/) is that guide as a working repo rather than
+as prose: a one-notebook lab with its own `pyproject.toml`, `uv.lock` and
+`Makefile`, small enough to read in a sitting. It is a demo for the teaching team,
+not a course repo. It also carries `lint-portability.py`, which fails a document
+that uses a construct some PDF route drops silently -- the rules in §5 of the
+guide, enforced on the source rather than hoped for.
+
 ### How this is tested, and what a green build does not prove
 
 [`.github/workflows/assignment-workflow.yml`](.github/workflows/assignment-workflow.yml)
