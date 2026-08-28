@@ -95,12 +95,17 @@ Copy paste the default Python gitignore file from github: <https://github.com/gi
 *.sh     text eol=lf
 Makefile text eol=lf
 *.py     text eol=lf
+*.qmd    text eol=lf
+*.Rmd    text eol=lf
+*.ipynb  text eol=lf
 ```
 
 The Windows install guide has students commit Unix-style and check out Windows-style,
 so without this every script arrives with CRLF. `bash` then fails on the shebang with
 `$'\r': command not found`, and make appends a carriage return to every argument.
 Neither error mentions line endings and both get reported as "the repo is broken".
+`*.ipynb` matters for a different reason: CRLF inside notebook JSON puts a stray
+carriage return on otter's `# BEGIN SOLUTION` markers.
 
 ### A Python version
 
@@ -124,8 +129,8 @@ for input.
 
 | route | engine | when |
 | --- | --- | --- |
-| `uv run quarto render <file> --to pdf` | lualatex | **Preferred.** Reads `.ipynb`, `.qmd` and `.Rmd` |
-| `uv run quarto render <file> --to typst` | Typst | When the document has emoji or literal Greek |
+| `uv run quarto render <file> --to typst` | Typst | **Preferred.** No LaTeX at all, and it keeps emoji and literal Greek. Reads `.ipynb`, `.qmd` and `.Rmd` |
+| `uv run quarto render <file> --to pdf` | lualatex | The LaTeX route. Same three inputs, but drops emoji and literal Greek |
 | `Rscript -e 'rmarkdown::render("f.Rmd")'` | xelatex, via knitr | An `.Rmd` rendered by R itself |
 | JupyterLab `File > Save and Export Notebook As... > PDF` | xelatex, via nbconvert | Familiar, but breaks on markdown tables |
 | JupyterLab `... > WebPDF` | headless Chromium | No LaTeX; handles emoji. **Not on Windows** |
@@ -133,7 +138,8 @@ for input.
 ### The four rules
 
 Every route drops something silently and still reports success. These rules avoid all
-of it, and `lint-portability.py` in `mds-demo-assignment/` enforces them on the source.
+of it. `lint-portability.py` in `mds-demo-assignment/` checks a document's source
+against them.
 
 1. **Every maths construct goes inside `$…$` or `$$…$$`.** A bare `\begin{equation}` or
    `\begin{align}` is a raw LaTeX environment that Typst never sees. Write aligned
@@ -302,7 +308,8 @@ folder is `ModuleNotFoundError` for a package the repo declares, not an error fr
 
 - **A shared repo template.** `mds-demo-assignment/` is a working example, not yet a
   GitHub template repo.
-- **DSCI 521.** The environments content was written around uv. `.venv` is no longer
+- **DSCI 521.** The environments content was written around conda and needs to move to
+  uv. `.venv` is no longer
   something students meet for the first time in block 2, so the material can start from
   "you have been using one, here is what it is".
 - **R kernels in Jupyter.** IRkernel is installed nowhere by the MDS setup. A course
