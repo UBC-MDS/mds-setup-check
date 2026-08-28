@@ -158,8 +158,9 @@ of it.
 
 2. **Nothing outside maths starts with a backslash.** `**bold**`, `*emphasis*`,
    markdown tables, `^[footnotes]`. Written as `\textbf{}`, `\emph{}`, `\footnote{}` or
-   `tabular` they reach the LaTeX PDF but vanish in Typst and HTML, leaving
-   a grammatical sentence with a word or symbol missing.
+   `tabular` they typeset only in the LaTeX PDF. Typst and Quarto's HTML drop them
+   *tidily* -- a grammatical sentence with a word or symbol missing, which is why nobody
+   notices -- and nbconvert's HTML prints the raw command onto the page instead.
 
 3. **Inside maths, Greek is `\alpha`, never a literal `α`.** The delimiters are not a
    shield: `\text{}` and `\mathrm{}` switch back to the text font, so `$$\theta =

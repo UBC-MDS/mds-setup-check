@@ -70,7 +70,7 @@ Every PDF route drops something without telling you. These four rules avoid all 
    and drops it without an error. This includes Greek inside `\text{}`.
 3. **Nothing outside maths starts with a backslash.** `**bold**` not `\textbf{}`,
    markdown tables not `tabular`, footnotes as `^[like this]`. Written the LaTeX way
-   they vanish from Typst and HTML, leaving a grammatical sentence with a word missing.
+   they typeset only in the LaTeX PDF. Everywhere else they vanish, leaving a sentence with a word missing, or print as raw source.
 4. **Emoji only survive Typst, HTML and WebPDF.** There is no maths form for one.
 
 If something is already missing from a PDF, check
@@ -100,10 +100,9 @@ make check     # the verdict
 route is known not to work, and stopping there would leave every later route unrendered
 and looking broken.
 
-- `make check` looks
-inside the finished files, because every LaTeX route exits 0 while silently dropping
-characters it has no glyph for.
-This runs a vibe-coded linter script.
+- `make check` looks inside the finished files, because every LaTeX route exits 0 while
+silently dropping characters it has no glyph for. `ci/assert-renders.py` extracts the
+text of every rendered PDF and HTML and asserts on what that route should contain. All the scripts in the ci/ directory are vibe coded (and not reviewed) to support the automations. 🤖
 
 ### Results
 
