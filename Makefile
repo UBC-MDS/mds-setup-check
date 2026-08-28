@@ -32,10 +32,15 @@
 # The list is built from the `##` comments on each target below, so it cannot go
 # stale the way a hand-written help message does. grep -E, sort and awk are all
 # present in Git Bash on Windows as well as on macOS and Linux.
-commands:  ## Show this list of targets
-	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
-		| sort \
+commands:  ### Show this list of targets
+	@echo 'What you run, in this order:'
+	@grep -E '^[a-zA-Z_-]+:.*[^#]## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*## "}; {printf "  %-10s %s\n", $$1, $$2}'
+	@echo
+	@echo 'Maintaining this repository. CI runs these; a student never needs them:'
+	@grep -E '^[a-zA-Z_-]+:.*### ' $(MAKEFILE_LIST) \
+		| sort \
+		| awk 'BEGIN {FS = ":.*### "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 # ---------------------------------------------------------------- install ----
 # Chromium is included because the WebPDF route below needs it, and it is the
@@ -58,7 +63,7 @@ all:  ## Render every document by every route
 	@echo 'Rendering finished. Now run `make check` to find out whether the results'
 	@echo 'are correct -- rendering without errors is not the same as rendering right.'
 
-render: pdf typst html webpdf  ## Render, without the keep-going wrapper (used by CI)
+render: pdf typst html webpdf  ### Render, without the keep-going wrapper (used by CI)
 
 # The fixtures, and everything they render, live in one directory. The three .sh
 # scripts stay at the repository root because GitHub Pages serves them from there and
@@ -93,11 +98,11 @@ WEBPDF_OUT = $(RC)/check-notebook-nbconvert-web.pdf $(RC)/check-notebook-nbconve
 # Four documents in three input formats, three renderers, four output formats. Quarto can render every input
 # format, so those combinations are all here; nbconvert only reads .ipynb and
 # rmarkdown only reads .Rmd, so those have fewer.
-pdf: $(LATEX_OUT)  ## Render to PDF through LaTeX
+pdf: $(LATEX_OUT)  ### Render to PDF through LaTeX
 
-typst: $(TYPST_OUT)  ## Render to PDF through Typst
+typst: $(TYPST_OUT)  ### Render to PDF through Typst
 
-html: $(HTML_OUT)  ## Render to HTML
+html: $(HTML_OUT)  ### Render to HTML
 
 # --- Quarto: the .qmd sources, whose output names are set in their own YAML ---
 $(RC)/check-quarto-py-latex.pdf $(RC)/check-quarto-py-typst.pdf $(RC)/check-quarto-py.html: $(RC)/check-quarto-py.qmd
@@ -156,7 +161,7 @@ $(RC)/check-rmarkdown-rmarkdown.html: $(RC)/check-rmarkdown.Rmd
 	Rscript -e 'rmarkdown::render("$<", output_format = "html_document", output_file = "$(notdir $@)")'
 
 # The LaTeX-free route, rendered by a headless browser rather than TeX.
-webpdf: $(WEBPDF_OUT)  ## Render to PDF through a headless browser
+webpdf: $(WEBPDF_OUT)  ### Render to PDF through a headless browser
 
 # Tried twice. nbconvert loads the page with playwright and waits for "networkidle" with
 # a fixed 30-second budget; the notebook pulls MathJax from a CDN, so a slow network makes
@@ -185,21 +190,21 @@ $(RC)/check-notebook-nbconvert-api-web.pdf: $(RC)/check-notebook.ipynb ci/webpdf
 check:  ## Check the rendered documents actually contain what they should
 	uv run python ci/assert-renders.py
 
-matrix:  ## Print the feature-by-route table that is in the README
+matrix:  ### Print the feature-by-route table that is in the README
 	uv run python ci/feature-matrix.py
 
-matrix-check:  ## Check the README's table still matches the rendered files
+matrix-check:  ### Check the README's table still matches the rendered files
 	uv run python ci/check-matrix-block.py
 
 # Documentation drifts silently, which is the failure this project exists to catch, so
 # the mechanical half of "keep the docs in sync" is a target rather than a promise.
-check-docs:  ## Check the documentation still describes this repository
+check-docs:  ### Check the documentation still describes this repository
 	uv run python ci/assert-docs.py
 
 # The claims assignment-workflow-uv.md makes about this repo, which course repos are
 # copied from. It ran only in CI, so an instructor copying this repository could not
 # check the contract they were inheriting without knowing the script by name.
-check-contract:  ## Check this repo still matches what the assignment guide describes
+check-contract:  ### Check this repo still matches what the assignment guide describes
 	uv run python ci/assert-contract.py
 
 # ------------------------------------------------------------------ clean ----

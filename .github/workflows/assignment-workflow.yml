@@ -58,7 +58,7 @@ jobs:
         with:
           enable-cache: true
           # Scoped to the root lock file. The default is `**/uv.lock`, which also
-          # matches demo-assignment/uv.lock -- a project this workflow never installs.
+          # matches mds-demo-assignment/uv.lock -- a project this workflow never installs.
           # A change there would rekey the cache for the project that IS installed
           # here, turning every run into a cache miss for no reason.
           cache-dependency-glob: uv.lock

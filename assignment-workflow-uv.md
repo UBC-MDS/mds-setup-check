@@ -11,7 +11,7 @@ The reference implementation of everything below is **this repository**, which
 students clone during installation: it measures every claim in §5 against real
 fixtures, in `render-checks/`. It is not the thing to copy, though -- its `Makefile`
 renders six fixtures by twenty-one routes. Start a new assignment repo from
-[`demo-assignment/`](demo-assignment/) instead: one notebook, its own
+[`mds-demo-assignment/`](mds-demo-assignment/) instead: one notebook, its own
 `pyproject.toml` and `uv.lock`, a short `Makefile`, and `lint-portability.py` for the
 §5 rules.
 
@@ -453,7 +453,7 @@ error from uv itself.
 
 ## 11. Open items for the teaching team
 
-- **A shared repo template.** `demo-assignment/` in this repository is a working
+- **A shared repo template.** `mds-demo-assignment/` in this repository is a working
   example of everything above -- one notebook, its own lock file, a `Makefile`, and
   a linter for the §5 rules. It is a demo rather than a template: turning it into a
   real template repo, so that JupyterLab and `ipykernel` are declared consistently
