@@ -12,7 +12,7 @@
 LAB ?= lab0a
 OUT ?= DSCI_521_LAB_ORIENTATION_PY
 
-.PHONY: commands setup generate package all clean
+.PHONY: commands setup generate package all clean clear
 
 commands:  ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -38,3 +38,8 @@ all: package  ## Generate and package in one step
 
 clean:  ## Delete everything the two steps above produced
 	rm -rf release/$(LAB) $(OUT)
+
+# Run after opening the source notebook to check your own answers. Committing a
+# notebook full of saved output makes every later diff unreadable.
+clear:  ## Strip saved output from the source notebook
+	uv run jupyter nbconvert --clear-output --inplace source/$(LAB)/$(LAB).ipynb

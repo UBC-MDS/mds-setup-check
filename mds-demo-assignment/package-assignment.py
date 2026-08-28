@@ -63,10 +63,26 @@ def main() -> int:
             print(f"  {m}")
         return 1
 
+    notebook = out / f"{args.lab}.ipynb"
+
+    # Clear every output and execution count. otter strips them, but an instructor who
+    # ran the source notebook to check their own answers can leave them behind, and a
+    # student opening an assignment that already has results in it is confusing at best.
+    import json
+    nb = json.loads(notebook.read_text(encoding="utf-8"))
+    cleared = sum(1 for c in nb["cells"] if c.get("cell_type") == "code"
+                  and (c.get("outputs") or c.get("execution_count") is not None))
+    for cell in nb["cells"]:
+        if cell.get("cell_type") == "code":
+            cell["outputs"], cell["execution_count"] = [], None
+    if cleared:
+        notebook.write_text(json.dumps(nb, indent=1, ensure_ascii=False) + "\n",
+                            encoding="utf-8")
+        print(f"cleared saved output from {cleared} cell(s)")
+
     # The student notebook must not carry the solutions. otter strips them, but this
     # runs anyway: shipping an assignment with its answers in it is the one mistake
     # here that cannot be taken back once the folder is handed out.
-    notebook = out / f"{args.lab}.ipynb"
     body = notebook.read_text(encoding="utf-8")
     for marker in ("BEGIN SOLUTION", "END SOLUTION"):
         if marker in body:
