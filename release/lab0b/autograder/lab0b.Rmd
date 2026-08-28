@@ -1,0 +1,212 @@
+---
+title: "DSCI 521 Lab 0b"
+subtitle: Submitting an RMarkdown Assignment
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+---
+
+This assignment is similar to the `lab0a` assignment
+that used Jupyter notebooks.
+In this lab assignment,
+we will practice working with RMarkdown assignments.
+
+## RMarkdown Documents
+
+This is an RMarkdown document.
+A literate programming document where you can interweave
+prose text, code, and code output.
+
+### Prose Text
+
+The main difference from an RMarkdown document and a
+a Jupyter notebook is that an RMarkdown document is easier to read
+in any plain text editor and does not need any special tools
+to render the document in a human readable way.
+
+The other difference is that you can write regular prose text
+in the document directly,
+you do not need separate markdown cells.
+You will only need specially formatted code chunk to run code.
+
+In MDS you will primarily work with Jupyter notebooks for your Python assignments,
+and you will use RMarkdown documents for your R assignments.
+
+### Code Chunks
+
+Below is a code cell that uses the `R` engine to run R code.
+
+The code cell will have a play button for you to run the code.
+
+```{r}
+print("Hell, World!")
+```
+
+Your IDE will most likely highlight the code chunk in a different color,
+so you can visually see where the code chunk area is.
+If you accidently change or delete a character that specifies the beginning
+and end of the code chunk,
+the background coloring of your document may change,
+and you may not see the code runing controls that you'd expect.
+
+You can run the code by selecting the code and and pressing CTRL + Return (Windows/Linux),
+or command/apple + Return (MacOS).
+
+```{r}
+print("Hell, Again!")
+```
+
+Optional: There's a package called `emo` with the function `ji()`
+that you can install and use text to print emoji's.
+
+The fundamental building block of R code is an expression.
+Code chunks can contain multiple lines with multiple expressions.
+When you run a chunk,
+the lines of code are executed in the order in which they appear.
+Every `print()` expression prints a line.
+Run the next cell and notice the order of the output.
+
+```{r}
+print("First this line is printed,")
+print("then this one,")
+```
+
+### Comments
+
+When a line of **code** begins with the `#` character,
+it is called a comment,
+all the code and text to the right of a leading `#` character will
+be ignored by the programming language.
+
+
+
+Change the cell below by replacing the comment such that the output
+will print the following results:
+
+```
+First this line is printed,
+then this one,
+and then the whole world.
+
+```
+
+*Note:* The setup for RMarkdown for PDF exporting requires a bit more
+setup than we want to deal with right now.
+
+```{r}
+# your code here
+```
+
+## Writing RMarkdown files
+
+RMarkdown is a a special file based on the "Markdown" syntax.
+You can think of it as giving Markdown documents the ability
+to specify a programming language and run code.
+
+You can even run Python code in an RMarkdown document,
+but you will need and set up an R libray called `reticulate` to do that.
+
+Markdown documents are ubiquitous in data science and computing in general.
+
+To add text, you type directly in the document where you want the text to be.
+To add a new code chunk you can manually type in the markdown verbatim
+fences with the `{r}` that specifies the engine.
+In Rstudio you can also look for the green `+C` button up top to have it
+enter a code chunk for you.
+
+Below: add a code cell from scratch that prints out:
+
+```
+A Whole new chunk!
+```
+
+## Errors
+
+R is a language,
+and like natural human languages,
+it has rules.
+It differs from natural language in two important ways:
+
+1. The rules are *simple*.
+   You can learn most of them in a few weeks and
+   gain reasonable proficiency with the language in a semester.
+2. The rules are *rigid*.
+   If you're proficient in a natural language,
+   you can understand a non-proficient speaker,
+   glossing over small mistakes.
+   A computer running Python code is not smart enough to do that.
+
+Whenever you write code, you'll make mistakes.
+When you run a code cell that has errors,
+Python will sometimes produce error messages to tell you what you did wrong.
+
+Errors are okay; even experienced programmers make **many** errors.
+When you make an error,
+you just have to find the source of the problem, fix it, and move on.
+
+We have made an error in the next cell.  Run it and see what happens.
+
+```{r error=TRUE}
+# un-comment the code below and fix it
+#print("This line is missing something."
+```
+
+The error message will show
+`Error: Incomplete expression: ` or ` unexpected end of input`.
+If we look at the code, we will notice that we are missing the closing `)`
+
+The `error=TRUE` in the code chunk is an option that allows the document to
+render the error (more on that at the very end of the lab).
+
+Fix the code above so it no longer errors.
+
+## Stop, Restart, and Re-Run Chunks
+
+You can stop and restart the R session by going to the `Session` drop down
+in the RStudio IDE.
+
+As you work,
+you will typically want to run `Session` > `Restart R and Run All Chunks`
+on a regular basis, so you can check that you did not introduce any
+code errors as you work and edit.
+
+> Everything in this file is editable, it's really easy to change a character
+> somewhere that will break your code.
+> Really, use the Restart R and Run All Chunks action often.
+> You don't want to finish an assignment, and realize it won't render anymore.
+
+## Autograded Questions
+
+Many assignments in MDS will be distributed as files like this one.
+
+You may need the following libraries.
+Run the following code that checks if you have the `testthat` and `digest` packages,
+and it will install it for you if it's missing.
+
+```{r}
+if (!require(testthat)) {install.packages("testthat")}
+if (!require(digest)) {install.packages("digest")}
+```
+
+An autograded question will look like the one below:
+
+
+Create object named `y` with a value of `10`.
+
+```{r tags=c("otter_assign_solution_cell")}
+# BEGIN SOLUTION
+y <- 10
+# END SOLUTION
+
+print(y)
+```
+
+```{r}
+. = ottr::check("tests/Q2-1-autograder.R")
+```
+
+Now, at the top of the RStudio IDE,
+click the blue `Knit` button, and it should create a PDF file
+of your assignment.
+You will use this `.pdf` file as one of your homework submissions.

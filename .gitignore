@@ -1,3 +1,5 @@
+*.zip
+.claude
 **.log
 
 .venv/
