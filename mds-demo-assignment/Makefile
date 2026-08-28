@@ -1,54 +1,40 @@
-# One command per thing a student does. `make` alone lists them.
+# The instructor side of an MDS assignment. Students never see this file; they get the
+# directory `make package` builds, which has a Makefile of its own.
 #
-# Every Python command goes through `uv run`, which puts this project's .venv first
-# on PATH. That is what makes the repo self-contained: nothing is inherited from the
-# machine, so a leftover Homebrew or pyenv Python cannot be picked up by accident.
+#   source/<lab>/   the assignment as you write it, solutions and tests included
+#   release/<lab>/  what `otter assign` produces: a student copy and an autograder
+#   DSCI_521_...    the student copy plus the project files, ready to hand out
+#
+# Every command goes through `uv run` so it uses this folder's .venv, which is pinned
+# by uv.lock. `otter assign` executes the notebook to check the solutions against their
+# own tests, so that environment has to contain everything the notebook imports.
 
-.PHONY: commands install lab lint run pdf typst all clean
+LAB ?= lab0a
+OUT ?= DSCI_521_LAB_ORIENTATION_PY
 
-commands:  ## List these commands
-	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
+.PHONY: commands setup generate package all clean
 
-install:  ## Create .venv and install the locked packages
+commands:  ## Show this list
+	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
+		| awk 'BEGIN {FS = ":.*## "}; {printf "  %-9s %s\n", $$1, $$2}'
+
+setup:  ## Create .venv and install what building an assignment needs
 	uv sync
 
-lab:  ## Open the assignment in JupyterLab
-	uv run jupyter lab lab1.ipynb
-
-lint:  ## Check the notebook for constructs that do not survive every PDF route
-	uv run python lint-portability.py lab1.ipynb
-
-# Not "did you get the right answer" -- grader.check() in the notebook tells you that.
-# This is "does the notebook still run top to bottom", which is the failure that
-# actually reaches a TA: a cell is edited, not re-run, and the submitted PDF shows
-# output that no longer matches the code. Quarto does not execute an .ipynb by
-# default, so nothing else here would catch it.
+# otter assign is run FROM the source directory. It resolves the paths in ASSIGNMENT
+# CONFIG relative to the working directory, so running it from here would look for
+# requirements.txt in the wrong place.
 #
-# Note there is no `uv run pytest` target. pytest is not declared in pyproject.toml,
-# and under `uv run` an undeclared command is looked up on the inherited PATH -- so on
-# a machine that happens to have one, it would run against the wrong interpreter and
-# fail in a way that looks like a bug in the assignment. See §4 of the guide.
-run:  ## Re-run the whole notebook and fail if any cell errors
-	uv run jupyter nbconvert --to notebook --execute --inplace lab1.ipynb
+# It also grades the solution notebook against its own tests and exits non-zero if any
+# fail. That is the point of the step, not a side effect: it catches a test that is
+# wrong, and a test that depends on a cell the student might not have run.
+generate:  ## Build release/$(LAB) from source/$(LAB) with otter assign
+	cd source/$(LAB) && uv run --project ../.. otter assign $(LAB).ipynb ../../release/$(LAB)
 
-# Quarto reads .ipynb directly, so nothing has to be converted first. --execute
-# because Quarto does NOT run a notebook by default: without it a student who edited
-# a cell without re-running it submits a PDF of stale output, with no warning.
-pdf: lab1-latex.pdf  ## Render the submission PDF (LaTeX)
-typst: lab1-typst.pdf  ## Render the submission PDF (Typst; use if you need emoji)
+package: generate  ## Build the folder students are given
+	uv run python package-assignment.py --lab $(LAB) --into $(OUT)
 
-# Named apart on purpose. Quarto compiles to an intermediate named after the INPUT
-# and then moves it, and treats --to pdf and --to typst as the same output for a
-# given input, so two targets over one source overwrite each other with no warning.
-lab1-latex.pdf: lab1.ipynb
-	uv run quarto render $< --to pdf --execute --output $@
+all: package  ## Generate and package in one step
 
-lab1-typst.pdf: lab1.ipynb
-	uv run quarto render $< --to typst --execute --output $@
-
-all: lint run pdf  ## Lint, re-run every cell, and render what you submit
-
-clean:  ## Delete everything the renders produced
-	rm -f lab1-latex.pdf lab1-typst.pdf
-	rm -rf .quarto lab1_files
+clean:  ## Delete everything the two steps above produced
+	rm -rf release/$(LAB) $(OUT)
