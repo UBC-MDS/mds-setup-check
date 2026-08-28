@@ -1,36 +1,30 @@
 #!/usr/bin/env python3
 """Measure which document features survive which render route.
 
-The table this produces goes in the README. It is generated rather than written
-by hand, because a hand-maintained table of a program's behaviour drifts from the
-behaviour -- which is the failure this repository exists to catch.
+The table goes in docs/render-matrix.md, generated rather than hand-written because a
+hand-maintained table of a program's behaviour drifts from the behaviour.
 
 Run `make all` first, then `python ci/feature-matrix.py`.
 """
 import pathlib, re, html, sys, importlib.util
 
-# This prints tick and cross marks, and on Windows the redirected stdout of
-# `make matrix >> "$GITHUB_STEP_SUMMARY"` is the locale codepage, not UTF-8.
+# On Windows the redirected stdout of `make matrix >> "$GITHUB_STEP_SUMMARY"` is the
+# locale codepage, not UTF-8, and this prints tick and cross marks.
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
     except AttributeError:
         pass
 
-# The reasons a route is known to fail live in assert-renders.py, which is what
-# gates CI. Importing them keeps the table's footnotes and the gate's verdict
-# from ever disagreeing.
+# Imported from the gate so the footnotes and the verdict cannot disagree.
 _spec = importlib.util.spec_from_file_location(
     "assert_renders", pathlib.Path(__file__).with_name("assert-renders.py"))
 _ar = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_ar)
 KNOWN_TO_FAIL = _ar.KNOWN_TO_FAIL
 
-# Routes and features are both derived from the gate rather than restated here.
-# They used to be two hand-kept lists, and they drifted: the gate stopped accepting
-# "unbiased" as evidence of inline maths because it is the prose beside the equation,
-# and this table went on accepting it for months. A published table that is more
-# forgiving than the gate it illustrates is worse than no table.
+# Routes and features are derived from the gate, not restated. They used to be two
+# hand-kept lists and drifted, leaving a published table more forgiving than the gate.
 _PRETTY = {"LaTeX": "LaTeX PDF", "Typst": "Typst PDF"}
 
 ROUTES = []
@@ -38,30 +32,18 @@ for _name, (_label, _kind, _src) in _ar.ROUTES.items():
     _, _tool, _out = (part.strip() for part in _label.split("->"))
     ROUTES.append((_src, _tool, _PRETTY.get(_out, _out), _name, _kind))
 
-# The full feature list, not grouped: a column that always agrees is still worth
-# showing, because the day it stops agreeing is the day this table earns its keep.
-# (label, needles, supported-by, source marker). The marker is what decides whether a
-# fixture is asked about a feature at all -- a document with no markdown table is not
-# failing to render one.
-#
-# The supported set is carried through rather than discarded, which is what lets this
-# table tell "this route was never meant to do that" apart from "this is broken". It
-# used to drop it, so a raw \begin{equation} on the Typst row and a genuinely broken
-# renderer both printed the same cross, and a reader had no way to know which was
-# which. That is the same conflation that made the old `numbered eqn` column read as a
-# limitation of Typst.
+# (label, needles, supported-by, source marker). The marker decides whether a fixture
+# is asked about a feature at all -- a document with no markdown table is not failing
+# to render one. The supported set is carried through rather than discarded, which is
+# what lets a cell say "never meant to do that" rather than "broken".
 FEATURES = [(desc, needles, supported, marker)
             for desc, needles, supported, marker in _ar.CHECKS]
 FEATURES.append(("image", [], _ar.IMAGE_ROUTES, "mds-logo.png"))
 
-# The image probe and the source reader both live in assert-renders.py, so the gate
-# and this table agree on what "the image is there" and "the fixture contains it" mean.
+# Reused from the gate so both agree on what "the image is there", "the fixture
+# contains it" and the fixture directory join mean.
 has_image = _ar.has_image
 source_text = _ar.source_text
-# The directory join lives in assert-renders.py and is reused rather than repeated.
-# This table opens the rendered files itself, so a missed join here would print a
-# grid of "no file produced" while `make matrix-check` still exited 0 -- a table
-# that says the whole toolchain is broken, and a gate that agrees with it.
 fixture = _ar.fixture
 FIXTURE_DIR = _ar.FIXTURE_DIR
 
@@ -76,12 +58,9 @@ def text_of(path: pathlib.Path) -> str:
 
 
 def main() -> int:
-    # Four outcomes, not two. A cross used to mean both "this renderer is broken" and
-    # "this construct was never going to survive this route", which are opposite
-    # readings: one is a bug to chase, the other is the documented behaviour of the
-    # toolchain and the reason to pick a different route. Anyone reading a cross beside
-    # `raw equation` on the Typst row and concluding Typst is deficient has been misled
-    # by the table rather than informed by it.
+    # Four outcomes, not two. A cross used to mean both "broken" and "never going to
+    # survive this route", which are opposite readings: one is a bug to chase, the
+    # other is a reason to pick a different route.
     YES = "✅"    # present, and this route is expected to reproduce it
     BYDES = "⬜"  # absent, and this route is NOT expected to -- by design, not a fault
     NO = "❌"     # absent, but this route WAS expected to: something is broken
@@ -108,8 +87,7 @@ def main() -> int:
 
     for ext, routes in by_ext.items():
         sources = sorted({r[0] for r in routes})
-        # One table per extension keeps them narrow, but .qmd has two fixtures
-        # (one per language), so that table needs a column saying which.
+        # .qmd has two fixtures, one per language, so that table needs a column.
         multi = len(sources) > 1
         print(f"\n**`{ext}`**"
               + ("" if multi else f" — `{FIXTURE_DIR}/{sources[0]}`") + "\n")
@@ -124,17 +102,13 @@ def main() -> int:
             row = ([f"`{FIXTURE_DIR}/{src}`"] if multi else []) + [tool, out]
             written = source_text(src)
             # A dash means the fixture does not contain the construct, which is a
-            # different statement from a cross. Without the distinction the
-            # table-only fixture would read as a row of failures.
+            # different statement from a cross.
             applies = [marker in written for _, _, _, marker in FEATURES]
             expected = [_ar.supports(sup, kind, name) for _, _, sup, _ in FEATURES]
             if not path.exists():
-                # Nothing was produced, so no construct can be present. Every
-                # applicable cell points at the note under the table rather than
-                # carrying a cross of its own -- but only when the route is a
-                # DOCUMENTED limitation. A route that fails without being in
-                # KNOWN_TO_FAIL keeps its crosses, so that "❌ anywhere in this table
-                # means something is broken right now" stays true.
+                # Nothing was produced, so cells point at the note under the table
+                # rather than carrying crosses -- but only for a DOCUMENTED
+                # limitation, so "❌ means something is broken right now" stays true.
                 notes.append((name, tool, out))
                 row[-2] = f"{tool} {WARN}"
                 blank = WARN if _ar.is_known(name) else NO
@@ -153,9 +127,8 @@ def main() -> int:
             print("| " + " | ".join(row) + " |")
 
         for name, tool, out in notes:
-            # is_known, not a bare lookup: the WebPDF limitation is Windows-only, and
-            # printing it as the explanation for a Linux failure would tell an
-            # instructor that a real breakage was expected.
+            # is_known, not a bare lookup: the WebPDF limitation is Windows-only, so
+            # printing it for a Linux failure would excuse a real breakage.
             _, why = (KNOWN_TO_FAIL[name] if _ar.is_known(name)
                       else (None, "this route produced no file on this platform, and it "
                                   "is not a known limitation -- something is broken."))

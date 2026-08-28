@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 """Turn otter's student output into the folder a student is actually handed.
 
-`otter assign` produces `release/<lab>/student/`, which holds the assignment and its
-tests and nothing else. A student needs more than that: for Python, the packages pinned
-to exact versions and a Python version; for both, a `.gitignore` and one command per
-thing they have to do. This copies those in and gives the result the name the course
-uses.
-
-The output is deliberately a plain directory rather than a subdirectory of this
-repository's project. The Python one carries its own `pyproject.toml` and `uv.lock`, so
-a student moves it out, runs `uv sync`, and has one environment rather than two nested
-ones. The R one carries no lock file at all, because R packages come from the library
-the MDS install guides set up rather than from the assignment.
+`otter assign` produces the assignment and its tests and nothing else. This adds what a
+student also needs: for Python a `pyproject.toml`, `uv.lock` and `.python-version`; for
+both a `.gitignore` and a `Makefile`. The R one carries no lock file, because R packages
+come from the library the MDS install guides set up.
 
 Usage:  python package-assignment.py --lab lab0a --kind py --into DSCI_521_LAB_ORIENTATION_PY
         python package-assignment.py --lab lab0b --kind r  --into DSCI_521_LAB_ORIENTATION_R
@@ -26,11 +19,8 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 
-# Copied verbatim from the instructor workspace so a student resolves to the same
-# versions the assignment was written and tested against. uv.lock is the reason to copy
-# rather than regenerate: a fresh resolve on a student's machine could pick up a newer
-# pandas the week an assignment is due. R has no equivalent on purpose -- its packages
-# come from the MDS install, not from the assignment.
+# Copied verbatim rather than regenerated: a fresh resolve on a student's machine could
+# pick up a newer pandas the week an assignment is due.
 KIND = {
     "py": {"suffix": ".ipynb",
            "workspace": ["pyproject.toml", "uv.lock", ".gitignore", ".gitattributes"]},
@@ -107,9 +97,8 @@ def main() -> int:
         if cleared:
             print(f"cleared saved output from {cleared} cell(s)")
 
-    # The student copy must not carry the solutions. otter strips them, but this runs
-    # anyway: handing out an assignment with its answers in it is the one mistake here
-    # that cannot be taken back once the folder is given away.
+    # otter strips solutions, but this runs anyway: handing out an assignment with its
+    # answers in it cannot be taken back once the folder is given away.
     body = assignment.read_text(encoding="utf-8")
     for marker in ("BEGIN SOLUTION", "END SOLUTION"):
         if marker in body:

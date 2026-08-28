@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
-# Reports every Python installation this machine already has,
-# so that students can decide what to clean up before installing uv.
-# The version number represents <Year>.<Patch>
-# since we usually iterate on the script once per year just before the semester starts.
+# Reports every Python installation on this machine, so students can decide what to
+# clean up before installing uv. Version numbering is <Year>.<Patch>.
 #
-# This script only looks and reports.
-# It never uninstalls anything, never edits a configuration file, and never prompts.
-# Where a clean-up is worth doing it prints the command for you to run yourself.
+# It only looks: it never uninstalls, never edits a config file and never prompts. Where
+# a clean-up is worth doing it prints the command for you to run yourself.
 #
-# It is run in two places:
-#   1. By students, before installing uv, via
-#      bash <(curl -Ssf https://ubc-mds.github.io/mds-setup-check/check-python-installs.sh)
-#   2. From the end of check-setup-mds.sh, so the setup log records the whole picture.
-#
+# Run by students before installing uv, and again from the end of check-setup-mds.sh.
 # Written for bash 3.2, which is what macOS still ships.
 
 ORANGE='\033[0;33m'
@@ -51,9 +44,8 @@ report_dir() {
 }
 
 echo ''
-# Any value whose name looks like a credential is masked before it reaches the report.
-# The shell-configuration grep below matches on "anaconda", and ANACONDA_API_TOKEN is a
-# real variable, so a matching line can carry a token into a log the student submits.
+# Credential-looking values are masked: the grep below matches "anaconda", and
+# ANACONDA_API_TOKEN is a real variable that would ride into a submitted log.
 redact_secrets() {
     awk '
     BEGIN { split("key token secret password passwd credential auth", kw, " ")
@@ -75,9 +67,8 @@ redact_secrets() {
     '
 }
 
-# Run on its own this is the whole report, so its banner is a level-1 heading. Run from
-# inside check-setup-mds.sh it is one section of a longer log, and a second level-1 heading
-# there reads as a second report -- so the caller sets MDS_EMBEDDED and it demotes itself.
+# A level-1 heading on its own, demoted via MDS_EMBEDDED when called from
+# check-setup-mds.sh, where a second level-1 heading reads as a second report.
 if [ -n "$MDS_EMBEDDED" ]; then
     echo -e "${ORANGE}### Python installations already on this computer (v2026.08.18)${NC}"
 else
@@ -171,9 +162,8 @@ fi
 echo ''
 
 # --------------------------------------------------------------------------
-# Named for what it is. `check-setup-mds.sh` has its own `## Environment` section, which
-# says "not recorded" unless the student opts in, and two similarly-named headings in one
-# log read as a contradiction.
+# Named for what it is: check-setup-mds.sh has its own `## Environment` section, and two
+# similarly-named headings in one log read as a contradiction.
 echo -e "${ORANGE}## Python-related environment variables${NC}"
 echo ''
 found_var=''

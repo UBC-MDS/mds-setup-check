@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
 """Run check-setup-mds.sh the way a student does, and answer its prompts.
 
-Both prompts in that script are guarded by `[ -t 0 ]` and default to no without a
-terminal, which is the point: a script that is piped or scheduled must never record a
-student's environment. So exercising the student path in CI needs a real terminal, and
-feeding one from a pipe misaligns the answers -- verified: the answers arrive before the
-prompts and land on the wrong questions.
-
-This attaches a pseudo-terminal and answers each prompt only after seeing it.
+Both prompts are guarded by `[ -t 0 ]` and default to no without a terminal, so
+exercising the student path needs a real one -- and feeding a pty from a plain pipe
+misaligns the answers. This attaches a pty and answers each prompt after seeing it.
 
     python3 ci/run-setup-check.py /path/to/check-setup-mds.sh
 
-Everything the script prints is passed through, so the job log shows exactly what a
-student would see. The exit status is the script's own.
+Output is passed through; the exit status is the script's own.
 """
 import os, pty, re, select, sys
 
 # (what to wait for, what to answer, why)
 ANSWERS = [
-    # Either form of the first question. A runner with no ~/mds-setup-check is asked
-    # to create it; one that already has the folder -- a warm or self-hosted runner --
-    # is asked whether to replace it instead, and the two are alternatives rather than
-    # both appearing. Matching only the first would stall here until the timeout.
+    # Either form of the first question: a warm runner that already has the folder is
+    # asked to replace it instead. Matching only one would stall until the timeout.
     (re.compile(r"Set up the MDS check project now\?|and download a fresh copy\?"), b"y\n",
      "yes: the point of the run is to exercise the checks that need the project"),
     (re.compile(r"Include environment variables in the log\?"), b"n\n",
