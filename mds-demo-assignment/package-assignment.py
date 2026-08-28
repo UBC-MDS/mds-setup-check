@@ -1,44 +1,75 @@
 #!/usr/bin/env python3
 """Turn otter's student output into the folder a student is actually handed.
 
-`otter assign` produces `release/<lab>/student/`, which holds the notebook and nothing
-else. A student needs more than a notebook: the packages pinned to exact versions, a
-Python version, a `.gitignore`, and one command per thing they have to do. This copies
-those in and gives the result the name the course uses.
+`otter assign` produces `release/<lab>/student/`, which holds the assignment and its
+tests and nothing else. A student needs more than that: for Python, the packages pinned
+to exact versions and a Python version; for both, a `.gitignore` and one command per
+thing they have to do. This copies those in and gives the result the name the course
+uses.
 
 The output is deliberately a plain directory rather than a subdirectory of this
-repository's project. It carries its own `pyproject.toml` and `uv.lock`, so a student
-moves it out, runs `uv sync`, and has one environment rather than two nested ones.
+repository's project. The Python one carries its own `pyproject.toml` and `uv.lock`, so
+a student moves it out, runs `uv sync`, and has one environment rather than two nested
+ones. The R one carries no lock file at all, because R packages come from the library
+the MDS install guides set up rather than from the assignment.
 
-Usage:  python package-assignment.py [--lab lab0a] [--into DSCI_521_LAB_ORIENTATION_PY]
+Usage:  python package-assignment.py --lab lab0a --kind py --into DSCI_521_LAB_ORIENTATION_PY
+        python package-assignment.py --lab lab0b --kind r  --into DSCI_521_LAB_ORIENTATION_R
 """
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import shutil
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 
-# Copied verbatim from the instructor workspace, so the student resolves to the same
+# Copied verbatim from the instructor workspace so a student resolves to the same
 # versions the assignment was written and tested against. uv.lock is the reason to copy
 # rather than regenerate: a fresh resolve on a student's machine could pick up a newer
-# pandas the week an assignment is due.
-FROM_WORKSPACE = ["pyproject.toml", "uv.lock", ".gitignore", ".gitattributes"]
-FROM_TEMPLATE = ["Makefile", ".python-version"]
+# pandas the week an assignment is due. R has no equivalent on purpose -- its packages
+# come from the MDS install, not from the assignment.
+KIND = {
+    "py": {"suffix": ".ipynb",
+           "workspace": ["pyproject.toml", "uv.lock", ".gitignore", ".gitattributes"]},
+    "r": {"suffix": ".Rmd",
+          "workspace": [".gitignore", ".gitattributes"]},
+}
+
+
+def clear_outputs(notebook: pathlib.Path) -> int:
+    """Strip saved output and execution counts from a .ipynb, in place.
+
+    otter already does this, but an instructor who ran the source notebook to check
+    their own answers leaves it behind, and an assignment that arrives with results
+    already in it is confusing at best.
+    """
+    nb = json.loads(notebook.read_text(encoding="utf-8"))
+    dirty = sum(1 for c in nb["cells"] if c.get("cell_type") == "code"
+                and (c.get("outputs") or c.get("execution_count") is not None))
+    if dirty:
+        for cell in nb["cells"]:
+            if cell.get("cell_type") == "code":
+                cell["outputs"], cell["execution_count"] = [], None
+        notebook.write_text(json.dumps(nb, indent=1, ensure_ascii=False) + "\n",
+                            encoding="utf-8")
+    return dirty
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--lab", default="lab0a")
+    ap.add_argument("--kind", choices=sorted(KIND), default="py")
     ap.add_argument("--into", default="DSCI_521_LAB_ORIENTATION_PY")
     args = ap.parse_args()
+    spec = KIND[args.kind]
 
     student = HERE / "release" / args.lab / "student"
     if not student.is_dir():
         print(f"error: {student.relative_to(HERE)} does not exist.")
-        print("Run `make generate` first -- that is what builds it from source/.")
+        print(f"Run `make LAB={args.lab} generate` first -- that builds it from source/.")
         return 1
 
     out = HERE / args.into
@@ -49,13 +80,16 @@ def main() -> int:
     shutil.copytree(student, out)
 
     missing = []
-    for name in FROM_WORKSPACE:
+    for name in spec["workspace"]:
         src = HERE / name
-        (shutil.copy2(src, out / name) if src.exists() else missing.append(name))
-    for name in FROM_TEMPLATE:
-        src = HERE / "student-template" / name
-        (shutil.copy2(src, out / name) if src.exists() else
-         missing.append(f"student-template/{name}"))
+        shutil.copy2(src, out / name) if src.exists() else missing.append(name)
+    template = HERE / "student-template" / args.kind
+    if not template.is_dir():
+        missing.append(f"student-template/{args.kind}/")
+    else:
+        for src in sorted(template.iterdir()):
+            if src.is_file():
+                shutil.copy2(src, out / src.name)
 
     if missing:
         print("error: these files are missing from the workspace:")
@@ -63,30 +97,23 @@ def main() -> int:
             print(f"  {m}")
         return 1
 
-    notebook = out / f"{args.lab}.ipynb"
+    assignment = out / f"{args.lab}{spec['suffix']}"
+    if not assignment.exists():
+        print(f"error: {assignment.name} is not in the student output.")
+        return 1
 
-    # Clear every output and execution count. otter strips them, but an instructor who
-    # ran the source notebook to check their own answers can leave them behind, and a
-    # student opening an assignment that already has results in it is confusing at best.
-    import json
-    nb = json.loads(notebook.read_text(encoding="utf-8"))
-    cleared = sum(1 for c in nb["cells"] if c.get("cell_type") == "code"
-                  and (c.get("outputs") or c.get("execution_count") is not None))
-    for cell in nb["cells"]:
-        if cell.get("cell_type") == "code":
-            cell["outputs"], cell["execution_count"] = [], None
-    if cleared:
-        notebook.write_text(json.dumps(nb, indent=1, ensure_ascii=False) + "\n",
-                            encoding="utf-8")
-        print(f"cleared saved output from {cleared} cell(s)")
+    if spec["suffix"] == ".ipynb":
+        cleared = clear_outputs(assignment)
+        if cleared:
+            print(f"cleared saved output from {cleared} cell(s)")
 
-    # The student notebook must not carry the solutions. otter strips them, but this
-    # runs anyway: shipping an assignment with its answers in it is the one mistake
-    # here that cannot be taken back once the folder is handed out.
-    body = notebook.read_text(encoding="utf-8")
+    # The student copy must not carry the solutions. otter strips them, but this runs
+    # anyway: handing out an assignment with its answers in it is the one mistake here
+    # that cannot be taken back once the folder is given away.
+    body = assignment.read_text(encoding="utf-8")
     for marker in ("BEGIN SOLUTION", "END SOLUTION"):
         if marker in body:
-            print(f"error: {notebook.name} still contains a {marker!r} marker.")
+            print(f"error: {assignment.name} still contains a {marker!r} marker.")
             print("The solutions were not stripped. Do not hand this out.")
             return 1
 
