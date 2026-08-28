@@ -1,17 +1,38 @@
-# A demo assignment repo
+# The MDS demo assignment
 
-**Audience:** MDS instructors and TAs. This is not a course repo and no student
-should be given it. It is the smallest thing that is honestly an assignment, built
-to show what [`../assignment-workflow-uv.md`](../assignment-workflow-uv.md)
+This is what an MDS assignment repo looks like. It holds the orientation labs --
+`source/` as instructors write them, `release/` as students and the autograder
+receive them -- and `lab1.ipynb`, the smallest thing that is honestly an assignment,
+built to show what [`../assignment-workflow-uv.md`](../assignment-workflow-uv.md)
 describes in the abstract.
 
-It runs. Everything below has been executed on this machine, not sketched.
+It runs. Everything below has been executed, not sketched.
+
+## Move this folder out first
+
+**Copy this directory somewhere else before you work in it**, and treat the copy as
+its own repository:
+
+```bash
+cp -r mds-demo-assignment ~/mds-demo-assignment
+cd ~/mds-demo-assignment
+```
+
+It ships its own `pyproject.toml` and `uv.lock`, so `uv sync` here builds a `.venv`
+*inside* a repository that already has one at its root. uv picks the right one, but it
+says so in a way that reads like a mistake:
+
+```
+warning: `VIRTUAL_ENV=.../mds-setup-check/.venv` does not match the project
+environment path `.venv` and will be ignored
+```
+
+Nothing is broken when you see that -- but there is no reason to meet two environments
+in week one, and an assignment you are handed will not be nested inside anything.
 
 ## What a student does
 
 ```bash
-git clone <this repo>
-cd demo-assignment
 uv sync
 make lab
 ```

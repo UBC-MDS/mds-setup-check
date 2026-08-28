@@ -249,9 +249,9 @@ does not look for it — it creates it — so the next run makes it again.
 | `.github/workflows/assignment-workflow.yml` | the CI described under **For instructors** below |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
 | `render-checks/mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
-| [`demo-assignment/`](demo-assignment/) | the assignment guide as a working repo: one notebook, its own lock file, a Makefile, and the portability linter |
-| `source/lab0a`, `source/lab0b` | the two orientation labs as instructors write them, before otter-grader splits them |
-| `release/lab0a`, `release/lab0b` | the same two labs as students and the autograder receive them |
+| [`mds-demo-assignment/`](mds-demo-assignment/) | every assignment in one place: the orientation labs, a worked example, its own lock file, a Makefile and the portability linter. Copy it out of this repo before working in it |
+| `mds-demo-assignment/source/` | the two orientation labs as instructors write them, before otter-grader splits them |
+| `mds-demo-assignment/release/` | the same two labs as students and the autograder receive them |
 | [`using-atkinson-hyperlegible.md`](using-atkinson-hyperlegible.md) | optional: how to set a document in the Atkinson Hyperlegible typeface |
 | `check-setup-mds.sh` | the setup check itself, the script students are told to run |
 | `check-python-installs.sh` | reports every Python already on the machine; run on its own before installing uv, and again from inside the setup check |
@@ -275,7 +275,7 @@ This project doubles as the reference shape for an MDS assignment repo.
 must declare, why `uv.lock` is committed, how PDFs get produced, and the failure
 modes students will report.
 
-[`demo-assignment/`](demo-assignment/) is that guide as a working repo rather than
+[`mds-demo-assignment/`](mds-demo-assignment/) is that guide as a working repo rather than
 as prose: a one-notebook lab with its own `pyproject.toml`, `uv.lock` and
 `Makefile`, small enough to read in a sitting. It is a demo for the teaching team,
 not a course repo. It also carries `lint-portability.py`, which fails a document
