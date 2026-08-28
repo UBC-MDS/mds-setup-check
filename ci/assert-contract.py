@@ -86,14 +86,21 @@ def main() -> int:
     # any other check here. A fixture renamed in the Makefile and not in the script is
     # invisible until install week -- which is exactly what happened to check-quarto.qmd.
     script = (root / "check-setup-mds.sh").read_text(encoding="utf-8")
-    referenced = set(re.findall(r"check-[a-z-]+\.(?:qmd|ipynb|Rmd)", script))
+    # Anchored on the "$mds_project/" the script actually copies FROM, not on the bare
+    # basename. A basename is also printed in the student-facing error messages, so
+    # matching it would verify a message string rather than a path -- and would pass
+    # happily while one of the five copy sites kept a stale directory. This resolves
+    # what the script really opens, so a missing prefix at any site is a failure.
+    referenced = set(re.findall(
+        r"\$mds_project/(\S+?\.(?:qmd|ipynb|Rmd))", script))
     check(bool(referenced), "5", "the setup check script names some fixtures")
     for fixture in sorted(referenced):
         check((root / fixture).exists(), "5",
               f"check-setup-mds.sh renders {fixture}, and it exists")
     # Both PDF routes in that script need the logo the fixtures embed; a missing image is
     # a hard error in LaTeX and in Typst, not a warning.
-    check("mds-logo.png" in script, "5",
+    logos = set(re.findall(r"\$mds_project/(\S*mds-logo\.png)", script))
+    check(bool(logos) and all((root / p).exists() for p in logos), "5",
           "check-setup-mds.sh copies mds-logo.png alongside the fixtures",
           "the fixtures embed it, and every PDF route fails without it")
 

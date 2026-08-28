@@ -626,8 +626,9 @@ else
     # report it to the student in their own words.
     # mds-logo.png is not optional: both fixtures embed it, and a missing image is a
     # hard error in every PDF route, not a warning. Verified by removing it.
-    cp "$mds_project/check-quarto-py.qmd" "$mds_project/check-notebook.ipynb" \
-       "$mds_project/mds-logo.png" "$scratch"
+    cp "$mds_project/render-checks/check-quarto-py.qmd" \
+       "$mds_project/render-checks/check-notebook.ipynb" \
+       "$mds_project/render-checks/mds-logo.png" "$scratch"
 
     # Quarto via Typst. Typst is bundled with Quarto and needs no LaTeX whatsoever, so this
     # is the route most likely to work on a machine where the LaTeX install went wrong.
@@ -720,14 +721,19 @@ else
     # never asks LaTeX for a font, so it passes on machines that cannot render real work.
     if [ -z "$r_scratch" ]; then
         pdf_fail 'rmarkdown PDF-generation could not be tested: no temporary directory could be created.'
-    elif [ -n "$mds_project_ok" ] && [ -f "$mds_project/check-rmarkdown.Rmd" ]; then
-        cp "$mds_project/check-rmarkdown.Rmd" "$r_scratch/mds-knit-pdf-test.Rmd"
-        cp "$mds_project/mds-logo.png" "$r_scratch/" 2> /dev/null
+    elif [ -n "$mds_project_ok" ] && [ -f "$mds_project/render-checks/check-rmarkdown.Rmd" ]; then
+        cp "$mds_project/render-checks/check-rmarkdown.Rmd" "$r_scratch/mds-knit-pdf-test.Rmd"
+        # Not silenced, for the same reason as the copy in the Document export section
+        # above: the fixture embeds this image, and a missing image is a hard LaTeX
+        # error rather than a warning. Silencing a load-bearing copy is the idiom that
+        # hid a fixture rename here for three commits.
+        cp "$mds_project/render-checks/mds-logo.png" "$r_scratch/"
     else
         # Not an empty file. An empty .Rmd never calls pandoc and never asks LaTeX for a
         # font, so it renders on machines that cannot render an actual assignment, and the
         # log then says PDF export works when it does not. This inline stand-in is small
         # but real: a heading, an R chunk and a character pdflatex cannot set.
+        echo 'NOTE      The R Markdown route used a built-in stand-in document, not check-rmarkdown.Rmd.' >> check-setup-mds.log
         cat > "$r_scratch/mds-knit-pdf-test.Rmd" <<'MDS_RMD_FIXTURE'
 ---
 title: "MDS setup check"
