@@ -4,8 +4,8 @@ For instructors and TAs, written for the 2026-27 cohort alongside the move from 
 to uv.
 
 **Start from [`mds-demo-assignment/`](mds-demo-assignment/)**, not from this
-repository. It is one notebook with its own `pyproject.toml`, `uv.lock`, `Makefile` and
-`lint-portability.py`, small enough to read in a sitting. This repository is the
+repository. It is one notebook with its own `pyproject.toml`, `uv.lock` and `Makefile`,
+small enough to read in a sitting. This repository is the
 reference implementation -- every rule in
 [Writing a document that renders everywhere](#4-writing-a-document-that-renders-everywhere) is measured here against real
 fixtures -- but its Makefile renders six fixtures by twenty-one routes, which is not a
@@ -138,8 +138,7 @@ for input.
 ### The four rules
 
 Every route drops something silently and still reports success. These rules avoid all
-of it. `lint-portability.py` in `mds-demo-assignment/` checks a document's source
-against them.
+of it.
 
 1. **Every maths construct goes inside `$…$` or `$$…$$`.** A bare `\begin{equation}` or
    `\begin{align}` is a raw LaTeX environment that Typst never sees. Write aligned
