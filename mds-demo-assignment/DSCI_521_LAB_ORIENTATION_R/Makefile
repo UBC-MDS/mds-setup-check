@@ -11,7 +11,7 @@ commands:  ## Show this list
 		| awk 'BEGIN {FS = ":.*## "}; {printf "  %-9s %s\n", $$1, $$2}'
 
 setup:  ## Check you have the R packages this lab needs
-	@Rscript -e 'miss <- Filter(function(p) !requireNamespace(p, quietly = TRUE), c("ottr", "testthat")); \
+	@Rscript -e 'miss <- Filter(function(p) !requireNamespace(p, quietly = TRUE), c("ggplot2", "ottr", "testthat")); \
 	  if (length(miss)) stop("missing R packages: ", paste(miss, collapse = ", "), \
 	  ". Run the MDS setup check, which installs them.") else cat("R packages OK\n")'
 

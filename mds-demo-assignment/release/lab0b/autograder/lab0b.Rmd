@@ -20,8 +20,9 @@ reads as a document, which is not true of an `.ipynb`.
 Work top to bottom, running each chunk with its ▶ button or `Ctrl+Shift+Enter`.
 
 ```{r setup}
-# Only ottr, the autograder. Your R courses will lean on the tidyverse; this lab keeps
-# to base R so there is one less thing to install in your first week.
+# ggplot2 is part of the tidyverse, which your R courses are built on and which the MDS
+# setup check installs for you. ottr is the autograder.
+library(ggplot2)
 library(ottr)
 ```
 
@@ -64,15 +65,14 @@ courses
 ## 3. A figure
 
 Assignments ask for plots, and a plot has to survive being rendered into whatever you
-hand in.
+hand in. This one is drawn with **ggplot2**, which is what your R courses use: you name
+the data, say which column goes on which axis inside `aes()`, then add the layers you
+want with `+`.
 
 ```{r}
-per_block <- table(courses$block)
-
-barplot(per_block,
-        xlab = "block",
-        ylab = "courses",
-        main = "Courses per block")
+ggplot(courses, aes(x = factor(block))) +
+  geom_bar() +
+  labs(x = "block", y = "courses", title = "Courses per block")
 ```
 
 ## 4. Answering in your own words
