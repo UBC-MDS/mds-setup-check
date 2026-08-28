@@ -1,123 +1,128 @@
 # The MDS demo assignment
 
-This is what an MDS assignment repo looks like. It holds the orientation labs --
-`source/` as instructors write them, `release/` as students and the autograder
-receive them -- and `lab1.ipynb`, the smallest thing that is honestly an assignment,
-built to show what [`../assignment-workflow-uv.md`](../assignment-workflow-uv.md)
-describes in the abstract.
+Two labs, the same lesson in two languages:
 
-It runs. Everything below has been executed, not sketched.
+| lab | language | source | students get |
+| --- | --- | --- | --- |
+| `lab0a` | Python, Jupyter | `source/lab0a/lab0a.ipynb` | `DSCI_521_LAB_ORIENTATION_PY/` |
+| `lab0b` | R, R Markdown | `source/lab0b/lab0b.Rmd` | `DSCI_521_LAB_ORIENTATION_R/` |
 
-## Move this folder out first
+Two audiences, so two halves below. **Students** want the section at the bottom.
+**Instructors and TAs** want everything above it.
 
-**Move this directory out of `mds-setup-check` before you work in it.** Then it is
-what a real assignment is: a repository of its own, handed to you, self-contained.
+---
 
-```bash
-mv mds-demo-assignment ~/Desktop/
-cd ~/Desktop/mds-demo-assignment
-```
-
-The reason is that this folder ships its own `pyproject.toml` and `uv.lock`, so
-`uv sync` here would build a `.venv` *inside* a repository that already has one at its
-root. uv picks the right one, but it says so in a way that reads like a mistake:
-
-```
-warning: `VIRTUAL_ENV=.../mds-setup-check/.venv` does not match the project
-environment path `.venv` and will be ignored
-```
-
-Nothing is broken when you see that -- but there is no reason to meet two environments
-in week one, and an assignment you are handed will not be nested inside anything.
-
-Moving the folder leaves `mds-setup-check` with a directory missing, so `git status`
-there will report `deleted: mds-demo-assignment/...`. That is expected, and it is not
-something you need to fix or commit.
-
-## What a student does
+# For instructors
 
 ```bash
-uv sync
-make lab
+make setup    # once: create .venv from uv.lock
+make all      # build both assignments; or `make py` / `make r` for one
 ```
 
-`uv sync` creates `.venv` here and installs the locked versions. `make lab` opens
-the notebook. Then, to hand in:
+## The three directories
+
+| directory | what it is | who sees it |
+| --- | --- | --- |
+| `source/<lab>/` | the assignment as you write it: solutions, tests, otter config | you |
+| `release/<lab>/` | what `otter assign` produces: `student/` and `autograder/` | you |
+| `DSCI_521_LAB_ORIENTATION_*/` | the student copy plus the project files | students |
+
+You edit `source/`. The other two are built, and `make clean` deletes them.
+
+## What each step does
+
+**`generate`** runs `otter assign` from inside `source/<lab>/`, which matters: otter
+resolves the paths in `ASSIGNMENT CONFIG` relative to the working directory.
+
+For Python it also **executes the solution and grades it against its own tests**,
+exiting non-zero if anything fails. That is the point of the step — it catches a test
+that is wrong, and, more often, a test that depends on a variable defined in some other
+cell.
+
+**`package`** runs `package-assignment.py`, which copies `release/<lab>/student/` into
+the handout directory and adds what the assignment alone does not have. For Python that
+is `pyproject.toml`, `uv.lock` and `.python-version`; for R, nothing of the sort,
+because R packages come from the library the MDS install guides set up. Both get a
+`.gitignore`, a `.gitattributes` and a `Makefile` with one target per thing a student
+does. It clears saved notebook output, and it **refuses to write the folder if a
+`BEGIN SOLUTION` marker survived**.
+
+`uv.lock` is **copied, not regenerated**, so every student resolves to the versions the
+assignment was written against rather than to whatever pandas shipped that week.
+
+## Writing questions
+
+Otter's format. In a notebook the boundary cells are **raw**; in R Markdown they are
+**HTML comments**:
+
+```
+notebook (.ipynb)                 R Markdown (.Rmd)
+raw   # BEGIN QUESTION            <!--
+      name: q1                    # BEGIN QUESTION
+                                  name: q1
+                                  -->
+md    the prompt                  the prompt
+raw   # BEGIN SOLUTION            <!-- # BEGIN SOLUTION -->
+code  the answer                  ```{r} the answer ```
+raw   # END SOLUTION              <!-- # END SOLUTION -->
+raw   # BEGIN TESTS               <!-- # BEGIN TESTS -->
+code  visible cases               ```{r} visible cases ```
+code  # HIDDEN                    ```{r} # HIDDEN ... ```
+raw   # END TESTS                 <!-- # END TESTS -->
+raw   # END QUESTION              <!-- # END QUESTION -->
+```
+
+Three rules worth knowing, each of which cost a morning to find:
+
+1. **Without the raw `# BEGIN SOLUTION` boundary cells the solution is not stripped**,
+   silently. Inline `# BEGIN SOLUTION` comments inside the cell only control what the
+   student sees *within* a cell that otter has already tagged. `package-assignment.py`
+   checks for surviving markers because of this.
+2. **A test may use only builtins and the student's own answer.** Not `pd`, not a
+   DataFrame from an earlier cell. The environment otter grades in is not the one you
+   have open — `import matplotlib` fails there — so a test that reaches for something
+   defined elsewhere fails for reasons that have nothing to do with the answer.
+3. **A tests cell whose first line contains `hidden` is hidden**: stripped from the
+   student copy, kept in the autograder. Say so in the prompt. Both labs do.
+
+## The R caveat
+
+`make r` passes `--no-run-tests`, and today that is not optional. The validation step
+grades the solution through `rpy2`, which fails to initialise against R 4.6:
+
+```
+Error in substring(x, m + 1L) : invalid substring arguments
+```
+
+Generation itself is unaffected — the student copy and the autograder are correct — but
+the safety net that Python gets is **not running for R**. Check the R tests by hand, and
+drop the flag the day rpy2 catches up.
+
+---
+
+# For students
+
+**Move your lab out of this repository before you start.**
 
 ```bash
-make all      # lint, re-run every cell, render lab1-latex.pdf
+mv DSCI_521_LAB_ORIENTATION_PY ~/Desktop/     # or ..._R
+cd ~/Desktop/DSCI_521_LAB_ORIENTATION_PY
 ```
 
-Run `make` on its own to list the commands.
+That folder is a complete assignment on its own. The Python one has its own packages;
+left where it is, `uv sync` would build a second environment inside a repository that
+already has one, and uv warns about it in a way that reads like an error. Moving it also
+leaves `git status` here reporting a deleted directory, which is expected and nothing to
+fix.
 
-## What is deliberate, and why
+Then, in either folder:
 
-**The dependency list is shorter than `mds-setup-check`'s.** That repo declares
-every package the install guides expect a student to end up with, because its job
-is to check the install. An assignment declares what the assignment uses. Copying
-the full list into every lab is the easy mistake, and it is why §3 of the guide is
-worth reading rather than skimming.
+```bash
+make setup    # Python: install the exact versions. R: check you have the packages.
+make all      # render the PDF and HTML you hand in
+```
 
-Two entries are there for reasons that are not obvious, both from §3 and §7:
-`jupyterlab` is a real dependency rather than a dev one, because Jupyter server
-extensions only work in the same environment prefix as the kernel; and `ipykernel`
-is named explicitly even though `jupyterlab` pulls it in, so that a grading image
-built with `uv sync --no-dev` still has a Python kernel.
+`make all` re-runs everything from a clean start. Run it before you finish: if it fails,
+your work only ran because of something you did earlier and then changed.
 
-**`uv.lock` is committed.** Every student resolves to byte-identical versions. Run
-`uv add <pkg>` mid-assignment and commit both files it changes.
-
-**`.gitattributes` pins line endings.** The Windows install guide has students set
-git to check out CRLF. Without this file, `bash` fails on a shebang with
-`$'\r': command not found` and GNU make appends a carriage return to every
-argument. Neither error mentions line endings, and both get reported as "the repo
-is broken".
-
-**The `Makefile` names its two PDF outputs apart.** Quarto compiles to an
-intermediate named after the *input* and then moves it, and treats `--to pdf` and
-`--to typst` as the same output for a given input. Two targets over one source
-overwrite each other with no warning.
-
-**`make run` re-executes the notebook.** Quarto does not run an `.ipynb` by
-default, so a student who edits a cell without re-running it renders a PDF of
-stale output and is told nothing. That is the failure that actually reaches a TA.
-
-## `make lint`, which is the part worth stealing
-
-`lint-portability.py` refuses constructs that some PDF route drops *silently*.
-Every route in the MDS toolchain exits 0 while discarding what it cannot set, so
-"it rendered" is not evidence it rendered correctly, and the sentence around the
-missing thing is still grammatical. Nobody reports these.
-
-It enforces the three rules from §5 of the guide:
-
-1. Maths goes inside `$…$` or `$$…$$`. A bare `\begin{equation}` is a raw LaTeX
-   environment that Typst renders nothing for. Numbering comes from Quarto's
-   `$$ … $$ {#eq-label}`, which is numbered in both PDF routes.
-2. Nothing outside maths starts with a backslash. `\textbf{}`, `\emph{}`,
-   `\footnote{}` and `tabular` reach the LaTeX PDF and vanish from Typst and HTML.
-3. Greek is `\alpha`, not a literal `α`. `$$` is not a shield: `\text{}` switches
-   back to the text font, so a literal character there is dropped by LaTeX inside
-   an equation that otherwise typesets perfectly.
-
-Code spans and fenced blocks are exempt, so a notebook may still *discuss*
-`\begin{align}` or name a column `alpha`.
-
-The rules are not folklore. `mds-setup-check` measures each one on fixtures and
-regenerates its table from the rendered files; `check-raw-passthrough.qmd` is the
-fixture for rules 2 and 3.
-
-## What this demo does not show
-
-- **Autograding.** `grader.check()` gives students feedback against the public
-  tests in `tests/`. Grading a submitted notebook is `otter grade` on the
-  instructor side, which needs Docker and is out of scope here.
-- **Hidden tests.** Every case in `tests/` is public, which no real assignment
-  should do.
-- **R.** uv does not manage R. See §3 of the guide for the renv option.
-
-One honest observation while building it: `otter-grader` requires
-`nbconvert[webpdf]`, `jupytext`, `ipywidgets` and `ipylab`, so playwright lands in
-the environment whether or not the assignment wants it. Declaring a short
-dependency list keeps the *repo* honest about what it uses; it does not keep the
-install small.
+Run `make` on its own for the full list.

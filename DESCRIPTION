@@ -1,0 +1,41 @@
+Package: mds.setup.check
+Type: Project
+Title: R Dependencies For The MDS Setup Check
+Version: 0.1.0
+Description: This project is not an R package, and STUDENTS NEVER TOUCH THIS FILE.
+    Their R packages come from the library the MDS install guides set up; renv is not
+    mentioned in orientation and the assignment handouts contain no lock file of any
+    kind. This exists for CI and for anyone rebuilding the repository from a clean
+    clone.
+    .
+    It lets renv take an *explicit* snapshot: the packages below are declared here
+    rather than inferred by scanning the code for library() calls. Inference was
+    quietly wrong here -- ggplot2 is loaded by an assignment that renv scanned but CI
+    never rendered, so it never reached renv.lock and a clean clone could not have
+    built the R lab. What each one is for:
+    .
+    rmarkdown renders check-rmarkdown.Rmd through R itself, which is one of the two
+    routes the README's matrix measures for that fixture.
+    .
+    knitr is the engine Quarto uses for every .Rmd and .qmd with an R chunk. It
+    arrives with rmarkdown anyway; it is named because Quarto calls it directly and a
+    reader should not have to know that rmarkdown depends on it.
+    .
+    ggplot2 draws the figure in section 3 of mds-demo-assignment/source/lab0b. It is
+    part of the tidyverse, which the MDS install guides put on every student machine,
+    so students already have it. This entry is only so CI and a fresh clone can build
+    the lab as well.
+    .
+    ottr is the R autograder. Students run ottr::check() in the lab, and the install
+    guides check for it by name.
+    .
+    testthat is what the ottr tests are written in (testthat::expect_equal and the
+    like). It arrives with ottr, and is named for the same reason as knitr.
+Encoding: UTF-8
+Imports:
+    ggplot2,
+    knitr,
+    ottr,
+    renv,
+    rmarkdown,
+    testthat

@@ -1,251 +1,301 @@
----
-title: "DSCI 521 Lab 0b"
-subtitle: Submitting an RMarkdown Assignment
-output:
-  pdf_document:
-    toc: yes
-    toc_depth: '4'
----
-
 <!--
 # ASSIGNMENT CONFIG
-environment: environment.yml
-overwrite_requirements: true
 generate: true
 export_cell: false
 -->
 
-This assignment is similar to the `lab0a` assignment
-that used Jupyter notebooks.
-In this lab assignment,
-we will practice working with RMarkdown assignments.
+---
+title: "DSCI 521 Lab 0b: your first MDS R assignment"
+author: "Your name here"
+format:
+  typst:
+    output-file: lab0b.pdf
+  html:
+    output-file: lab0b.html
+---
 
-## RMarkdown Documents
+This is `lab0a` again, in R. Everything it taught applies here -- the same autograder,
+the same export routes, the same rule about a document that has to run top to bottom.
+What changes is the file: an **R Markdown** document rather than a notebook.
 
-This is an RMarkdown document.
-A literate programming document where you can interweave
-prose text, code, and code output.
+The difference worth knowing on day one is that this file is **plain text**. Prose is
+written directly, with no cell around it, and code goes in a *chunk* that starts with
+```` ```{r} ```` and ends with ```` ``` ````. Open it in a text editor and it still
+reads as a document, which is not true of an `.ipynb`.
 
-### Prose Text
+Work top to bottom, running each chunk with its ▶ button or `Ctrl+Shift+Enter`.
 
-The main difference from an RMarkdown document and a
-a Jupyter notebook is that an RMarkdown document is easier to read
-in any plain text editor and does not need any special tools
-to render the document in a human readable way.
-
-The other difference is that you can write regular prose text
-in the document directly,
-you do not need separate markdown cells.
-You will only need specially formatted code chunk to run code.
-
-In MDS you will primarily work with Jupyter notebooks for your Python assignments,
-and you will use RMarkdown documents for your R assignments.
-
-### Code Chunks
-
-Below is a code cell that uses the `R` engine to run R code.
-
-The code cell will have a play button for you to run the code.
-
-```{r}
-print("Hell, World!")
+```{r setup}
+# ggplot2 is part of the tidyverse, which your R courses are built on and which the MDS
+# setup check installs for you. ottr is the autograder.
+library(ggplot2)
+library(ottr)
 ```
 
-Your IDE will most likely highlight the code chunk in a different color,
-so you can visually see where the code chunk area is.
-If you accidently change or delete a character that specifies the beginning
-and end of the code chunk,
-the background coloring of your document may change,
-and you may not see the code runing controls that you'd expect.
+## 1. Running code, and reading what comes back
 
-You can run the code by selecting the code and and pressing CTRL + Return (Windows/Linux),
-or command/apple + Return (MacOS).
+A chunk either **prints** something or **returns** something. `print()` writes a line
+as the code runs. The value of the last expression is shown underneath, with no
+`print()` involved.
 
 ```{r}
-print("Hell, Again!")
+print("Hello, MDS!")
+print("This line is printed second.")
 ```
-
-Optional: There's a package called `emo` with the function `ji()`
-that you can install and use text to print emoji's.
-
-The fundamental building block of R code is an expression.
-Code chunks can contain multiple lines with multiple expressions.
-When you run a chunk,
-the lines of code are executed in the order in which they appear.
-Every `print()` expression prints a line.
-Run the next cell and notice the order of the output.
 
 ```{r}
-print("First this line is printed,")
-print("then this one,")
+7 * 6
 ```
 
-### Comments
+Only the **last** expression is shown. This chunk computes two things and you see one
+of them.
 
-When a line of **code** begins with the `#` character,
-it is called a comment,
-all the code and text to the right of a leading `#` character will
-be ignored by the programming language.
+```{r}
+3 + 3
+7 * 6
+```
 
+## 2. A result with structure
+
+Most results in this program are tables. R calls one a `data.frame`.
+
+```{r}
+courses <- data.frame(
+  course = c("DSCI 511", "DSCI 521", "DSCI 523", "DSCI 531", "DSCI 552"),
+  block = c(1, 1, 2, 2, 3),
+  language = c("Python", "", "R", "R, Python", "R")
+)
+courses
+```
+
+## 3. A figure
+
+Assignments ask for plots, and a plot has to survive being rendered into whatever you
+hand in. This one is drawn with **ggplot2**, which is what your R courses use: you name
+the data, say which column goes on which axis inside `aes()`, then add the layers you
+want with `+`.
+
+```{r}
+ggplot(courses, aes(x = factor(block))) +
+  geom_bar() +
+  labs(x = "block", y = "courses", title = "Courses per block")
+```
+
+## 4. Answering in your own words
+
+Not every question is code. Some ask you to explain something, and in an R Markdown
+document you answer by typing straight into the file -- no cell to create, no mode to
+switch.
+
+### Question 4.1
+
+Look at the figure above. **In two or three sentences, say which block has the most
+courses and what that means for how busy you will be.** Replace the line below.
+
+_Your answer here._
+
+## 5. Mathematics -- read the source of this file
+
+Assignments in the statistics and machine learning courses are full of equations. You
+will mostly *read* them rather than write them, but you should recognise the two forms.
+
+Inline, inside a sentence: the mean of $n$ observations is $\bar{x}$, reported with a
+standard deviation $s$.
+
+On its own line, centred:
+
+$$
+\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i
+$$
+
+**Open this file in a text editor.** One dollar sign either side puts maths in a
+sentence; two put it on its own line. It is the same syntax as `lab0a` -- nothing about
+maths changes between Python and R, because neither language is involved.
+
+Greek letters are written as commands: `$\alpha$` gives $\alpha$, `$\beta$` gives
+$\beta$, `$\sigma^2$` gives $\sigma^2$. Write them that way rather than pasting the
+character and they survive every export format.
+
+## 6. Tables -- read the source of this too
+
+| block | courses | mostly |
+| --- | --- | --- |
+| 1 | 2 | Python |
+| 2 | 2 | R |
+| 3 | 1 | R |
+
+The columns need not line up in the source; the dashes on the second line are what
+make it a table.
+
+## 7. Emoji, and why your PDF may lose them
+
+You can put emoji in text 🎉 and print them from code. Run the chunk below.
+
+```{r}
+print("Kernel busy: \U0001F535")
+print("All tests passed: \U00002705")
+print("Look at the plot \U0001F4CA")
+```
+
+Now the part worth knowing. **Whether those emoji appear depends on how you export this
+document**, and when they vanish nothing warns you -- the sentence around them stays
+perfectly readable:
+
+| export route | emoji | Greek as `$\alpha$` | Greek pasted as a character |
+| --- | --- | --- | --- |
+| HTML | yes | yes | yes |
+| PDF via Typst | yes | yes | yes |
+| PDF via LaTeX | **no** | yes | **no** |
+
+`make pdf` in this folder uses **Typst**, which is why that is the command you are
+given. RStudio's `Knit` button takes the LaTeX route instead, which is worth knowing
+before you press it and wonder where the emoji went.
+
+## 8. Questions the autograder marks
+
+You write code, run `ottr::check(...)`, and it tells you straight away whether you were
+right. Run it as often as you like -- it is feedback, not a submission.
 
 <!--
 # BEGIN QUESTION
-name: Q1
-manual: true
+name: q1
+points: 1
 -->
 
-Change the cell below by replacing the comment such that the output
-will print the following results:
+### Question 8.1
 
-```
-First this line is printed,
-then this one,
-and then the whole world.
+Count how many of the five courses use R at all -- note that one of them uses both
+languages, and one lists none. Assign that number to `r_courses`. **You have not
+learned any R yet, so the answer is written in the chunk below** -- this question is
+about the autograder, not about the code.
 
-```
-
-*Note:* The setup for RMarkdown for PDF exporting requires a bit more
-setup than we want to deal with right now.
-
-```{r}
-# your code here
-```
-
-<!-- # END QUESTION -->
-
-## Writing RMarkdown files
-
-RMarkdown is a a special file based on the "Markdown" syntax.
-You can think of it as giving Markdown documents the ability
-to specify a programming language and run code.
-
-You can even run Python code in an RMarkdown document,
-but you will need and set up an R libray called `reticulate` to do that.
-
-Markdown documents are ubiquitous in data science and computing in general.
-
-To add text, you type directly in the document where you want the text to be.
-To add a new code chunk you can manually type in the markdown verbatim
-fences with the `{r}` that specifies the engine.
-In Rstudio you can also look for the green `+C` button up top to have it
-enter a code chunk for you.
-
-Below: add a code cell from scratch that prints out:
-
-```
-A Whole new chunk!
-```
-
-## Errors
-
-R is a language,
-and like natural human languages,
-it has rules.
-It differs from natural language in two important ways:
-
-1. The rules are *simple*.
-   You can learn most of them in a few weeks and
-   gain reasonable proficiency with the language in a semester.
-2. The rules are *rigid*.
-   If you're proficient in a natural language,
-   you can understand a non-proficient speaker,
-   glossing over small mistakes.
-   A computer running Python code is not smart enough to do that.
-
-Whenever you write code, you'll make mistakes.
-When you run a code cell that has errors,
-Python will sometimes produce error messages to tell you what you did wrong.
-
-Errors are okay; even experienced programmers make **many** errors.
-When you make an error,
-you just have to find the source of the problem, fix it, and move on.
-
-We have made an error in the next cell.  Run it and see what happens.
-
-```{r, error=TRUE}
-# un-comment the code below and fix it
-#print("This line is missing something."
-```
-
-The error message will show
-`Error: Incomplete expression: ` or ` unexpected end of input`.
-If we look at the code, we will notice that we are missing the closing `)`
-
-The `error=TRUE` in the code chunk is an option that allows the document to
-render the error (more on that at the very end of the lab).
-
-Fix the code above so it no longer errors.
-
-## Stop, Restart, and Re-Run Chunks
-
-You can stop and restart the R session by going to the `Session` drop down
-in the RStudio IDE.
-
-As you work,
-you will typically want to run `Session` > `Restart R and Run All Chunks`
-on a regular basis, so you can check that you did not introduce any
-code errors as you work and edit.
-
-> Everything in this file is editable, it's really easy to change a character
-> somewhere that will break your code.
-> Really, use the Restart R and Run All Chunks action often.
-> You don't want to finish an assignment, and realize it won't render anymore.
-
-## Autograded Questions
-
-Many assignments in MDS will be distributed as files like this one.
-
-You may need the following libraries.
-Run the following code that checks if you have the `testthat` and `digest` packages,
-and it will install it for you if it's missing.
-
-```{r}
-if (!require(testthat)) {install.packages("testthat")}
-if (!require(digest)) {install.packages("digest")}
-```
-
-An autograded question will look like the one below:
-
-<!--
-# BEGIN QUESTION
-name: Q2-1-autograder
-manual: false
-points:
-    - 1
--->
-
-Create object named `y` with a value of `10`.
+**Do the wrong thing first, on purpose.** Type `r_courses <- 2`, run the chunk, then
+run the check underneath it. Read what a failure looks like. *Then* put in the real
+answer and run both again. The autograder disagreeing with you is the normal state of
+affairs, not a problem.
 
 <!-- # BEGIN SOLUTION -->
 
 ```{r}
-# BEGIN SOLUTION
-y <- 10
-# END SOLUTION
+# The `language` column from the table above, as a plain vector.
+languages <- c("Python", "", "R", "R, Python", "R")
 
-print(y)
+# You have not written any R yet, so here is the answer. Replace the NULL below with:
+#
+#     sum(grepl("R", languages))
+
+r_courses <- sum(grepl("R", languages))  # SOLUTION
+
+r_courses
 ```
 
 <!-- # END SOLUTION -->
 
 <!-- # BEGIN TESTS -->
 
-```{r include=FALSE}
-. = " # BEGIN TEST CONFIG
-success_message: Answer 2.1 is correct, good job!
-failure_message: Answer 2.1 is wrong.
-" # END TEST CONFIG
-testthat::expect_equal(
-  digest::digest(round(y, 1)),
-  "2522027d230e3dfe02d8b6eba1fd73e1"
-)
+```{r}
+testthat::expect_true(!is.null(r_courses))
+testthat::expect_equal(as.numeric(r_courses), 3)
 ```
 
 <!-- # END TESTS -->
 
 <!-- # END QUESTION -->
 
-Now, at the top of the RStudio IDE,
-click the blue `Knit` button, and it should create a PDF file
-of your assignment.
-You will use this `.pdf` file as one of your homework submissions.
+<!--
+# BEGIN QUESTION
+name: q2
+points: 2
+-->
+
+### Question 8.2
+
+Most of what you write in this program will be **functions**. Write one called
+`block_size` that takes a vector of block numbers and one block number, and returns how
+many times that block appears. The answer is again given in the chunk.
+
+> **This question has hidden tests.** The check runs some of its cases in front of you
+> and keeps the rest back until your work is marked. Look at how many cases it reports,
+> and remember that the number you see is not the number that count. Most MDS
+> assignments work this way: passing the checks you can see is necessary, not
+> sufficient.
+
+<!-- # BEGIN SOLUTION -->
+
+```{r}
+# Again, the answer. Replace the NULL with the line below it:
+#
+#     sum(blocks == block)
+
+block_size <- function(blocks, block) {
+  # BEGIN SOLUTION
+  sum(blocks == block)
+  # END SOLUTION
+}
+
+# Works on a plain vector and on a column of the table alike.
+block_size(courses$block, 1)
+```
+
+<!-- # END SOLUTION -->
+
+<!-- # BEGIN TESTS -->
+
+```{r}
+testthat::expect_true(is.function(block_size))
+testthat::expect_equal(block_size(c(1, 1, 2), 1), 2)
+testthat::expect_equal(block_size(c(1, 1, 2), 2), 1)
+```
+
+```{r}
+# HIDDEN
+testthat::expect_equal(block_size(c(1, 1, 2), 9), 0)
+testthat::expect_equal(block_size(numeric(0), 1), 0)
+```
+
+<!-- # END TESTS -->
+
+<!-- # END QUESTION -->
+
+## 9. Break something on purpose
+
+Everyone writes broken code, constantly, and the only skill that matters is reading
+what R says about it. So make an error deliberately, look at it, then put it back.
+
+### Question 9.1
+
+The chunk below works. **Delete the closing bracket `)` from the end of the line and
+run it.** Read the message.
+
+```{r}
+print("Nothing is wrong with this line yet.")
+```
+
+You should see something ending in:
+
+```
+Error in parse(...) : unexpected end of input
+```
+
+R stops at the first thing it cannot read and tells you where it gave up. That is not
+always where the mistake is -- a bracket left open earlier makes R complain about the
+*next* line -- so read upwards from the error as well as at it.
+
+**Now put the bracket back and run the chunk again.** Leave it working: the next
+section renders the whole document from a clean start, and a broken chunk stops it.
+
+A document you hand in has to run top to bottom without errors. A chunk you broke and
+forgot about is the most common reason an assignment that "worked" fails when a TA
+opens it.
+
+## 10. Handing it in
+
+```bash
+make all
+```
+
+That renders `lab0b.pdf` and `lab0b.html`, re-running every chunk from a clean start.
+Submit the PDF.
+
+Run it before you finish. If it fails, your document only worked because of something
+you ran earlier and then changed -- which is exactly what section 9 was about.
