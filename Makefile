@@ -60,22 +60,35 @@ all:  ## Render every document by every route
 
 render: pdf typst html webpdf  ## Render, without the keep-going wrapper (used by CI)
 
+# The fixtures, and everything they render, live in one directory. The three .sh
+# scripts stay at the repository root because GitHub Pages serves them from there and
+# their download URLs are printed in the install guides.
+#
+# Each tool is told the output name WITHOUT a directory, because each one resolves it
+# relative to its input rather than to the working directory. Measured, not assumed:
+# `quarto render render-checks/x.ipynb --output NAME` writes NAME to the CURRENT
+# directory, which silently scatters half the routes into the repo root, and
+# `--output-dir` splits the document from its `_files/` sidecar and produces an HTML
+# with no stylesheet that every content check still passes. `-M output-file:` is the
+# form that keeps a document and its sidecar together.
+RC = render-checks
+
 # Every output name carries the tool that produced it. That is not only for
 # reading the table: Quarto compiles `check-rmarkdown.Rmd` to an intermediate
 # named `check-rmarkdown.pdf` and *then* moves it to --output, so a route named
 # after the input alone gets eaten by whichever route runs next.
-LATEX_OUT = check-quarto-py-latex.pdf check-quarto-r-latex.pdf \
-            check-notebook-quarto-latex.pdf check-rmarkdown-quarto-latex.pdf \
-            check-notebook-nbconvert-latex.pdf check-rmarkdown-rmarkdown-latex.pdf \
-            check-notebook-table-nbconvert-latex.pdf \
-            check-notebook-table-quarto-latex.pdf
-TYPST_OUT = check-quarto-py-typst.pdf check-quarto-r-typst.pdf \
-            check-notebook-quarto-typst.pdf check-rmarkdown-quarto-typst.pdf
-HTML_OUT  = check-quarto-py.html check-quarto-r.html \
-            check-notebook-quarto.html check-rmarkdown-quarto.html \
-            check-notebook-nbconvert.html check-rmarkdown-rmarkdown.html \
-            check-notebook-table-nbconvert.html
-WEBPDF_OUT = check-notebook-nbconvert-web.pdf check-notebook-nbconvert-api-web.pdf
+LATEX_OUT = $(RC)/check-quarto-py-latex.pdf $(RC)/check-quarto-r-latex.pdf \
+            $(RC)/check-notebook-quarto-latex.pdf $(RC)/check-rmarkdown-quarto-latex.pdf \
+            $(RC)/check-notebook-nbconvert-latex.pdf $(RC)/check-rmarkdown-rmarkdown-latex.pdf \
+            $(RC)/check-notebook-table-nbconvert-latex.pdf \
+            $(RC)/check-notebook-table-quarto-latex.pdf
+TYPST_OUT = $(RC)/check-quarto-py-typst.pdf $(RC)/check-quarto-r-typst.pdf \
+            $(RC)/check-notebook-quarto-typst.pdf $(RC)/check-rmarkdown-quarto-typst.pdf
+HTML_OUT  = $(RC)/check-quarto-py.html $(RC)/check-quarto-r.html \
+            $(RC)/check-notebook-quarto.html $(RC)/check-rmarkdown-quarto.html \
+            $(RC)/check-notebook-nbconvert.html $(RC)/check-rmarkdown-rmarkdown.html \
+            $(RC)/check-notebook-table-nbconvert.html
+WEBPDF_OUT = $(RC)/check-notebook-nbconvert-web.pdf $(RC)/check-notebook-nbconvert-api-web.pdf
 
 # Four documents in three input formats, three renderers, four output formats. Quarto can render every input
 # format, so those combinations are all here; nbconvert only reads .ipynb and
@@ -87,60 +100,60 @@ typst: $(TYPST_OUT)  ## Render to PDF through Typst
 html: $(HTML_OUT)  ## Render to HTML
 
 # --- Quarto: the .qmd sources, whose output names are set in their own YAML ---
-check-quarto-py-latex.pdf check-quarto-py-typst.pdf check-quarto-py.html: check-quarto-py.qmd
+$(RC)/check-quarto-py-latex.pdf $(RC)/check-quarto-py-typst.pdf $(RC)/check-quarto-py.html: $(RC)/check-quarto-py.qmd
 	uv run quarto render $< --to $(if $(findstring typst,$@),typst,$(if $(findstring html,$@),html,pdf))
 
-check-quarto-r-latex.pdf check-quarto-r-typst.pdf check-quarto-r.html: check-quarto-r.qmd
+$(RC)/check-quarto-r-latex.pdf $(RC)/check-quarto-r-typst.pdf $(RC)/check-quarto-r.html: $(RC)/check-quarto-r.qmd
 	uv run quarto render $< --to $(if $(findstring typst,$@),typst,$(if $(findstring html,$@),html,pdf))
 
 # --- Quarto: the same notebook and R Markdown the other tools render ---------
 # Rendering these through Quarto as well is the point: it shows whether Quarto
 # handles every input format, and it is the workaround when another tool cannot.
-check-notebook-quarto-latex.pdf: check-notebook.ipynb
-	uv run quarto render $< --to pdf --output $@
+$(RC)/check-notebook-quarto-latex.pdf: $(RC)/check-notebook.ipynb
+	uv run quarto render $< --to pdf -M output-file:$(notdir $@)
 
-check-notebook-quarto-typst.pdf: check-notebook.ipynb
-	uv run quarto render $< --to typst --output $@
+$(RC)/check-notebook-quarto-typst.pdf: $(RC)/check-notebook.ipynb
+	uv run quarto render $< --to typst -M output-file:$(notdir $@)
 
-check-notebook-quarto.html: check-notebook.ipynb
-	uv run quarto render $< --to html --output $@
+$(RC)/check-notebook-quarto.html: $(RC)/check-notebook.ipynb
+	uv run quarto render $< --to html -M output-file:$(notdir $@)
 
-check-rmarkdown-quarto-latex.pdf: check-rmarkdown.Rmd
-	uv run quarto render $< --to pdf --output $@
+$(RC)/check-rmarkdown-quarto-latex.pdf: $(RC)/check-rmarkdown.Rmd
+	uv run quarto render $< --to pdf -M output-file:$(notdir $@)
 
-check-rmarkdown-quarto-typst.pdf: check-rmarkdown.Rmd
-	uv run quarto render $< --to typst --output $@
+$(RC)/check-rmarkdown-quarto-typst.pdf: $(RC)/check-rmarkdown.Rmd
+	uv run quarto render $< --to typst -M output-file:$(notdir $@)
 
-check-rmarkdown-quarto.html: check-rmarkdown.Rmd
-	uv run quarto render $< --to html --output $@
+$(RC)/check-rmarkdown-quarto.html: $(RC)/check-rmarkdown.Rmd
+	uv run quarto render $< --to html -M output-file:$(notdir $@)
 
 # --- nbconvert: the route JupyterLab's export menu uses ----------------------
-check-notebook-nbconvert-latex.pdf: check-notebook.ipynb
-	uv run jupyter nbconvert $< --to pdf --output $(basename $@)
+$(RC)/check-notebook-nbconvert-latex.pdf: $(RC)/check-notebook.ipynb
+	uv run jupyter nbconvert $< --to pdf --output $(basename $(notdir $@))
 
-check-notebook-nbconvert.html: check-notebook.ipynb
-	uv run jupyter nbconvert $< --to html --output $(basename $@)
+$(RC)/check-notebook-nbconvert.html: $(RC)/check-notebook.ipynb
+	uv run jupyter nbconvert $< --to html --output $(basename $(notdir $@))
 
 # --- the markdown table, alone -----------------------------------------------
 # One construct, three routes. nbconvert's HTML is fine and Quarto's LaTeX is fine,
 # so when the first of these fails it is neither nbconvert nor LaTeX at fault: it is
 # nbconvert's LaTeX template. Keeping the table out of check-notebook.ipynb is what
 # lets that notebook export from JupyterLab, which is what students are told to do.
-check-notebook-table-nbconvert-latex.pdf: check-notebook-table.ipynb
-	uv run jupyter nbconvert $< --to pdf --output $(basename $@)
+$(RC)/check-notebook-table-nbconvert-latex.pdf: $(RC)/check-notebook-table.ipynb
+	uv run jupyter nbconvert $< --to pdf --output $(basename $(notdir $@))
 
-check-notebook-table-nbconvert.html: check-notebook-table.ipynb
-	uv run jupyter nbconvert $< --to html --output $(basename $@)
+$(RC)/check-notebook-table-nbconvert.html: $(RC)/check-notebook-table.ipynb
+	uv run jupyter nbconvert $< --to html --output $(basename $(notdir $@))
 
-check-notebook-table-quarto-latex.pdf: check-notebook-table.ipynb
-	uv run quarto render $< --to pdf --output $@
+$(RC)/check-notebook-table-quarto-latex.pdf: $(RC)/check-notebook-table.ipynb
+	uv run quarto render $< --to pdf -M output-file:$(notdir $@)
 
 # --- rmarkdown: rendered by R itself -----------------------------------------
-check-rmarkdown-rmarkdown-latex.pdf: check-rmarkdown.Rmd
-	Rscript -e 'rmarkdown::render("$<", output_format = "pdf_document", output_file = "$@")'
+$(RC)/check-rmarkdown-rmarkdown-latex.pdf: $(RC)/check-rmarkdown.Rmd
+	Rscript -e 'rmarkdown::render("$<", output_format = "pdf_document", output_file = "$(notdir $@)")'
 
-check-rmarkdown-rmarkdown.html: check-rmarkdown.Rmd
-	Rscript -e 'rmarkdown::render("$<", output_format = "html_document", output_file = "$@")'
+$(RC)/check-rmarkdown-rmarkdown.html: $(RC)/check-rmarkdown.Rmd
+	Rscript -e 'rmarkdown::render("$<", output_format = "html_document", output_file = "$(notdir $@)")'
 
 # The LaTeX-free route, rendered by a headless browser rather than TeX.
 webpdf: $(WEBPDF_OUT)  ## Render to PDF through a headless browser
@@ -149,15 +162,20 @@ webpdf: $(WEBPDF_OUT)  ## Render to PDF through a headless browser
 # a fixed 30-second budget; the notebook pulls MathJax from a CDN, so a slow network makes
 # this fail on a machine where nothing is wrong. Seen once on a macOS runner, passing on
 # the next run with no change. A route that is actually broken still fails, twice.
-check-notebook-nbconvert-web.pdf: check-notebook.ipynb
-	uv run jupyter nbconvert $< --to webpdf --output $(basename $@) \
-	|| uv run jupyter nbconvert $< --to webpdf --output $(basename $@)
+$(RC)/check-notebook-nbconvert-web.pdf: $(RC)/check-notebook.ipynb
+	uv run jupyter nbconvert $< --to webpdf --output $(basename $(notdir $@)) \
+	|| uv run jupyter nbconvert $< --to webpdf --output $(basename $(notdir $@))
 
 # The same export, driven through nbconvert's exporter API rather than its command
 # line. The CLI cannot do this on Windows, and this route is here to show that the
 # reason is one line in the CLI rather than anything about the platform. Read
 # ci/webpdf.py for the mechanism. Retried once for the same network reason.
-check-notebook-nbconvert-api-web.pdf: check-notebook.ipynb ci/webpdf.py
+#
+# This is the one recipe that is given a full path rather than $(notdir $@). Unlike
+# quarto and nbconvert, which resolve an output name relative to their input, this
+# script writes exactly where it is told relative to the working directory -- so it
+# takes $@ unchanged.
+$(RC)/check-notebook-nbconvert-api-web.pdf: $(RC)/check-notebook.ipynb ci/webpdf.py
 	uv run python ci/webpdf.py $< $@ || uv run python ci/webpdf.py $< $@
 
 # ------------------------------------------------------------------ check ----
@@ -186,7 +204,15 @@ check-contract:  ## Check this repo still matches what the assignment guide desc
 
 # ------------------------------------------------------------------ clean ----
 clean:  ## Delete everything the renders produced
-	rm -f check-*.pdf check-*.html
+	rm -f $(RC)/check-*.pdf $(RC)/check-*.html
+	rm -f $(RC)/*.tex $(RC)/*.knit.md $(RC)/*.quarto_ipynb
+	rm -rf $(RC)/.quarto $(RC)/*_files
+# The logs are written beside the Makefile, not beside the fixtures, so these two
+# lines must NOT gain the prefix: check-setup-mds.sh opens its log in the working
+# directory and every per-route error log lands there too.
 	rm -f check-setup-mds.log *.log
-	rm -f *.tex *.knit.md *.quarto_ipynb
+# Left by a working copy that predates the move. They are gitignored, so nothing else
+# would ever remove them, and an `ls` at the root would go on showing render output
+# that no longer has anything to do with this build.
+	rm -f check-*.pdf check-*.html *.tex *.knit.md *.quarto_ipynb
 	rm -rf .quarto *_files

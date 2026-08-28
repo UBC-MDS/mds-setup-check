@@ -8,8 +8,12 @@ installation guides, though it describes the environment those guides leave
 students with.
 
 The reference implementation of everything below is **this repository**, which
-students clone during installation. Copying its `pyproject.toml` and `Makefile`
-is a reasonable way to start a new assignment repo.
+students clone during installation: it measures every claim in §5 against real
+fixtures, in `render-checks/`. It is not the thing to copy, though -- its `Makefile`
+renders six fixtures by twenty-one routes. Start a new assignment repo from
+[`demo-assignment/`](demo-assignment/) instead: one notebook, its own
+`pyproject.toml` and `uv.lock`, a short `Makefile`, and `lint-portability.py` for the
+§5 rules.
 
 ---
 
@@ -210,10 +214,9 @@ them to use Typst.
 
 **Every route drops something, silently, and still reports success.** This is the
 section to read before writing an assignment. Every cell below is measured on the
-fixtures in this repository by `ci/feature-matrix.py`, with one stated exception: the
-raw-environment column is measured on `\begin{equation}`, and `\begin{align}` is
-grouped with it because pandoc forwards both for the same reason. No fixture contains
-a bare `align` on purpose.
+fixtures in `render-checks/` by `ci/feature-matrix.py`. A bare `\begin{equation}` and
+a bare `\begin{align}` get a column each, in every fixture, because pandoc forwards
+both for the same reason and it is worth showing that they fail identically.
 
 | | accents, dashes | `$…$`, `$$…$$` | `$$\begin{aligned}$$` | raw `\begin{align}`, `\begin{equation}` | raw `\emph`, `\footnote`, `tabular` | literal Greek, emoji | images |
 | --- | --- | --- | --- | --- | --- | --- | --- |

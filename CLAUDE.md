@@ -70,6 +70,19 @@ asked about constructs it holds. A new fixture needs no special case.
 
 ## The fixtures
 
+**Everything the fixtures need, and everything they produce, lives in
+`render-checks/`.** The repository root holds the three scripts GitHub Pages serves
+and little else. Each renderer is told an output name WITHOUT a directory, because
+each resolves it relative to its input: `quarto render render-checks/x.ipynb --output
+NAME` writes NAME to the *working* directory, and `--output-dir` separates a document
+from its `_files/` sidecar and yields a stylesheet-less HTML that every content check
+still passes. `-M output-file:` is the form that works. `ci/webpdf.py` is the one
+exception and takes a full path, because it writes where it is told.
+
+The directory is joined in exactly one place, `fixture()` in `ci/assert-renders.py`,
+and every other script imports it. `ROUTES` and `KNOWN_TO_FAIL` keep bare filenames,
+because those are the labels the README's table and the failure prose read.
+
 **Fixtures are organised by input format, because that is the choice an instructor
 makes first and cannot easily undo.** Four full fixtures carry the same features --
 two `.qmd` (one per language kernel), one `.ipynb`, one `.Rmd` -- so any difference

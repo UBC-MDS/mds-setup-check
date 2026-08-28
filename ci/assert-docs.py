@@ -20,7 +20,19 @@ import sys
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+import importlib.util
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# The fixture directory and the list of fixtures both come from the gate, so adding a
+# seventh fixture to render-checks/ without adding it to ROUTES fails this check --
+# which is the right way round.
+_spec = importlib.util.spec_from_file_location(
+    "assert_renders", pathlib.Path(__file__).with_name("assert-renders.py"))
+_ar = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_ar)
+FIXTURE_DIR = _ar.FIXTURE_DIR
+FIXTURES = {src for _, _, src in _ar.ROUTES.values()} | {"mds-logo.png"}
 # assignment-workflow-uv.md is here because course repos are copied from what it
 # describes: it names fixtures and ci/ scripts, and nothing was checking that those
 # names still resolve. A rename would have broken the guide the teaching team reads
@@ -54,13 +66,26 @@ def main() -> int:
         for target in sorted(named_targets):
             check(target in targets, doc, f"`make {target}` is a real target")
 
-        # Fixture and script filenames.
-        named = set(re.findall(r"\b(check-[a-z-]+\.(?:qmd|ipynb|Rmd|sh|log))\b", text))
-        named |= set(re.findall(r"\b(ci/[a-z-]+\.py)\b", text))
-        named |= set(re.findall(r"\b(mds-help\.sh|mds-logo\.png|renv\.lock|uv\.lock)\b", text))
-        for name in sorted(named):
-            if name == "check-setup-mds.log":
+        # Fixture and script filenames. The directory prefix is CAPTURED rather than
+        # stripped: a document that names a fixture at the wrong path is exactly the
+        # drift this gate exists to catch, and stripping the prefix would make it
+        # unable to fail the day after a move. A name written bare is prose, and
+        # resolves leniently -- but only if it is a fixture, so the three scripts
+        # GitHub Pages serves from the root stay pinned to the root.
+        NAMES = (r"check-[a-z-]+\.(?:qmd|ipynb|Rmd|sh|log)"
+                 r"|mds-help\.sh|mds-logo\.png|renv\.lock|uv\.lock")
+        seen = set()
+        for m in re.finditer(rf"(?<![\w/.-])((?:[\w.-]+/)*)({NAMES})\b", text):
+            prefix, name = m.group(1), m.group(2)
+            if name == "check-setup-mds.log" or (prefix, name) in seen:
                 continue                      # produced at run time, not tracked
+            seen.add((prefix, name))
+            if prefix:
+                check((ROOT / prefix / name).exists(), doc, f"`{prefix}{name}` exists")
+            else:
+                lenient = name in FIXTURES and (ROOT / FIXTURE_DIR / name).exists()
+                check((ROOT / name).exists() or lenient, doc, f"`{name}` exists")
+        for name in sorted(set(re.findall(r"\b(ci/[a-z-]+\.py)\b", text))):
             check((ROOT / name).exists(), doc, f"`{name}` exists")
 
         # A workflow path is quoted in both documents.

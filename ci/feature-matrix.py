@@ -58,6 +58,12 @@ FEATURES.append(("image", [], _ar.IMAGE_ROUTES, "mds-logo.png"))
 # and this table agree on what "the image is there" and "the fixture contains it" mean.
 has_image = _ar.has_image
 source_text = _ar.source_text
+# The directory join lives in assert-renders.py and is reused rather than repeated.
+# This table opens the rendered files itself, so a missed join here would print a
+# grid of "no file produced" while `make matrix-check` still exited 0 -- a table
+# that says the whole toolchain is broken, and a gate that agrees with it.
+fixture = _ar.fixture
+FIXTURE_DIR = _ar.FIXTURE_DIR
 
 
 def text_of(path: pathlib.Path) -> str:
@@ -105,7 +111,8 @@ def main() -> int:
         # One table per extension keeps them narrow, but .qmd has two fixtures
         # (one per language), so that table needs a column saying which.
         multi = len(sources) > 1
-        print(f"\n**`{ext}`**" + ("" if multi else f" — `{sources[0]}`") + "\n")
+        print(f"\n**`{ext}`**"
+              + ("" if multi else f" — `{FIXTURE_DIR}/{sources[0]}`") + "\n")
         lead = (["input"] if multi else []) + ["rendered by", "output"]
         heads = [f for f, _, _, _ in FEATURES]
         print("| " + " | ".join(lead + heads) + " |")
@@ -113,8 +120,8 @@ def main() -> int:
 
         notes = []
         for src, tool, out, name, kind in routes:
-            path = pathlib.Path(name)
-            row = ([f"`{src}`"] if multi else []) + [tool, out]
+            path = fixture(name)
+            row = ([f"`{FIXTURE_DIR}/{src}`"] if multi else []) + [tool, out]
             written = source_text(src)
             # A dash means the fixture does not contain the construct, which is a
             # different statement from a cross. Without the distinction the
