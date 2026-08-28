@@ -10,17 +10,17 @@ It runs. Everything below has been executed, not sketched.
 
 ## Move this folder out first
 
-**Copy this directory somewhere else before you work in it**, and treat the copy as
-its own repository:
+**Move this directory out of `mds-setup-check` before you work in it.** Then it is
+what a real assignment is: a repository of its own, handed to you, self-contained.
 
 ```bash
-cp -r mds-demo-assignment ~/mds-demo-assignment
-cd ~/mds-demo-assignment
+mv mds-demo-assignment ~/Desktop/
+cd ~/Desktop/mds-demo-assignment
 ```
 
-It ships its own `pyproject.toml` and `uv.lock`, so `uv sync` here builds a `.venv`
-*inside* a repository that already has one at its root. uv picks the right one, but it
-says so in a way that reads like a mistake:
+The reason is that this folder ships its own `pyproject.toml` and `uv.lock`, so
+`uv sync` here would build a `.venv` *inside* a repository that already has one at its
+root. uv picks the right one, but it says so in a way that reads like a mistake:
 
 ```
 warning: `VIRTUAL_ENV=.../mds-setup-check/.venv` does not match the project
@@ -29,6 +29,10 @@ environment path `.venv` and will be ignored
 
 Nothing is broken when you see that -- but there is no reason to meet two environments
 in week one, and an assignment you are handed will not be nested inside anything.
+
+Moving the folder leaves `mds-setup-check` with a directory missing, so `git status`
+there will report `deleted: mds-demo-assignment/...`. That is expected, and it is not
+something you need to fix or commit.
 
 ## What a student does
 

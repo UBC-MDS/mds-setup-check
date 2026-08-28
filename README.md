@@ -249,7 +249,7 @@ does not look for it — it creates it — so the next run makes it again.
 | `.github/workflows/assignment-workflow.yml` | the CI described under **For instructors** below |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
 | `render-checks/mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
-| [`mds-demo-assignment/`](mds-demo-assignment/) | every assignment in one place: the orientation labs, a worked example, its own lock file, a Makefile and the portability linter. Copy it out of this repo before working in it |
+| [`mds-demo-assignment/`](mds-demo-assignment/) | every assignment in one place: the orientation labs, a worked example, its own lock file, a Makefile and the portability linter. Move it out of this repo before working in it, so it is self-contained the way a real assignment is |
 | `mds-demo-assignment/source/` | the two orientation labs as instructors write them, before otter-grader splits them |
 | `mds-demo-assignment/release/` | the same two labs as students and the autograder receive them |
 | [`using-atkinson-hyperlegible.md`](using-atkinson-hyperlegible.md) | optional: how to set a document in the Atkinson Hyperlegible typeface |
