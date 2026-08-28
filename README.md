@@ -230,6 +230,7 @@ does not look for it — it creates it — so the next run makes it again.
 | `uv.lock` | the exact resolved Python versions, so everybody gets the same ones |
 | `.python-version` | the Python version this project runs on |
 | `renv.lock` | the same idea for R packages |
+| `DESCRIPTION` | which R packages this repository needs, and why. Students never use it -- theirs come from the MDS install |
 | `.Rprofile`, `renv/` | how R finds this project's own package library |
 | `Makefile` | installs, renders and checks; run `make` to list its targets |
 | [`CLAUDE.md`](CLAUDE.md) | context for an AI agent working here: the invariants, and what makes a check real |
