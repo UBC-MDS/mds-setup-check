@@ -54,23 +54,23 @@ Assignments include plots and images, which have to survive the render too.
 
 ## Mathematics
 
-Inline: the estimator $\hat{\beta}_{\mathrm{OLS}} = (X^{\top}X)^{-1}X^{\top}y$ is unbiased.
+The statistics and machine learning courses put real equations in assignments, so
+what follows is every form you are likely to meet, each with the routes that keep
+it. One rule explains all of them:
 
-A display equation:
+> If it is inside `$` or `$$`, pandoc parses it as mathematics and every route
+> sets it. If it is not, pandoc forwards it to LaTeX untranslated and the other
+> writers discard it.
+
+Inline, in a sentence: the estimator $\hat{\beta}_{\mathrm{OLS}} = (X^{\top}X)^{-1}X^{\top}y$
+is unbiased. Every route.
+
+A display equation. Every route:
 
 $$ \mathrm{RSS} = \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $$
 
-A numbered equation. Like `\begin{align}` below, `\begin{equation}` is a raw
-LaTeX environment that pandoc hands through untranslated, so Typst receives no
-maths and silently renders nothing here. LaTeX and HTML both set it:
-
-\begin{equation}
-\mathrm{MSE} = \hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
-\end{equation}
-
-Several lines aligned on the equals sign. Written as `aligned` inside `$$`, which
-every route understands. A bare `\begin{align}` is a raw LaTeX environment that
-Typst never sees, so it silently renders nothing there:
+Several lines aligned on the equals sign, written as `aligned` inside `$$`. Every
+route:
 
 $$
 \begin{aligned}
@@ -79,6 +79,85 @@ $$
 \end{aligned}
 $$
 
+A **numbered** equation, and the form to use when you need one. The number and the
+label come from Quarto rather than from a LaTeX environment. Every route:
+
+$$
+\mathrm{MSE} = \hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^{n} e_i^2
+$$ {#eq-mse}
+
+Referring back to it reads @eq-mse. Quarto resolves that from any input format --
+`.qmd`, `.ipynb` or `.Rmd` alike. **nbconvert and rmarkdown do not**: they print
+the label and the reference as literal text, so a notebook exported from
+JupyterLab's menu shows `{#eq-mse}` on the page.
+
+Now the raw LaTeX forms, which is where routes stop agreeing.
+
+A bare `equation` environment is not mathematics as far as pandoc is concerned. It
+never reaches the parser, so nothing downstream is given an equation -- only the
+environment, copied out. LaTeX sets it because that is what it is written in, and
+HTML sets it because MathJax renders it in the browser afterwards. **Typst drops
+it, silently:**
+
+\begin{equation}
+\mathrm{AIC} = 2k - 2\ln(\hat{L})
+\end{equation}
+
+A bare `align` environment fails identically, for the identical reason:
+
+\begin{align}
+\mathrm{BIC} &= k\ln(n) - 2\ln(\hat{L})
+\end{align}
+
+The same environment placed *inside* `$$` is parsed rather than forwarded, and so
+comes back to every route:
+
+$$
+\begin{equation}
+\mathrm{SSE} = \sum_{i=1}^{n} e_i^2
+\end{equation}
+$$
+
+LaTeX's own labelling is the one form that fails in **both** directions. The body
+of the equation renders everywhere; the reference does not. LaTeX resolves it to a
+number, Typst discards it without a word, and MathJax -- which is what sets the
+mathematics in HTML and in the WebPDF -- prints a bare question-mark marker in its
+place: visible, and meaning nothing. Use the `{#eq-...}` form above instead:
+
+$$
+\mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n} |e_i|
+\label{eq:mae}
+$$
+
+Referring to that one the LaTeX way reads \eqref{eq:mae}.
+
+Matrices, both spellings. Every route:
+
+$$
+\mathrm{COV} = \begin{pmatrix} \sigma_1^2 & \sigma_{12} \\ \sigma_{12} & \sigma_2^2 \end{pmatrix}
+$$
+
+$$
+\mathrm{DES} = \begin{bmatrix} 1 & x_1 \\ 1 & x_2 \end{bmatrix}
+$$
+
+A piecewise definition with `cases`. Every route:
+
+$$
+\mathrm{ReLU}(x) = \begin{cases} x & x > 0 \\ 0 & \text{otherwise} \end{cases}
+$$
+
+## Footnotes
+
+The same rule as the equations above, applied to prose rather than to
+mathematics. A footnote written as raw LaTeX is forwarded verbatim, and the three
+tools then disagree: LaTeX sets it as a real footnote, Quarto and rmarkdown drop it,
+and nbconvert prints the command itself onto the page.\footnote{RTFN -- LaTeX makes
+this a footnote; nbconvert shows this line as source text; the rest drop it.}
+
+The same note written as markdown is parsed, and so reaches every route.^[MDFN --
+this note reaches every route.]
+
 ## Characters that are not plain English
 
 Assignments regularly contain accents, Greek letters, degree signs, proper dashes
@@ -86,6 +165,21 @@ and emoji. Not every output route can typeset all of them, and that is expected
 rather than a fault in your installation:
 
 Montréal · naïve · Öl · 5 °C · α β γ · 10 – 20 · “curly quotes” · ✅ ❌ 📊 ⚠️
+
+`$$` is not a shield either. `\text{}` inside mathematics switches back to the
+text font, so a literal Greek character there is dropped by LaTeX exactly as it
+would be in prose -- inside an equation whose subscript typesets perfectly beside
+it:
+
+$$
+\theta_{\mathrm{TXTGRK}} = \text{ξ}
+$$
+
+Written as a command instead of as a literal character, it renders everywhere:
+
+$$
+\theta_{\mathrm{CMDGRK}} = \alpha
+$$
 
 
 ## Writing characters that render everywhere

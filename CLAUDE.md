@@ -70,24 +70,38 @@ asked about constructs it holds. A new fixture needs no special case.
 
 ## The fixtures
 
-Four full fixtures carry the same features, so any difference between them is a property
-of the toolchain. `check-notebook-table.ipynb` and `check-raw-passthrough.qmd` are the
-exceptions: one or two constructs each, isolated.
+**Fixtures are organised by input format, because that is the choice an instructor
+makes first and cannot easily undo.** Four full fixtures carry the same features --
+two `.qmd` (one per language kernel), one `.ipynb`, one `.Rmd` -- so any difference
+between them is a property of the toolchain rather than of the document. Someone
+asking "I have a notebook; what can I do with it?" should find the answer in one
+file, not assembled from several.
 
-Splitting it out is the pattern to copy. nbconvert cannot export a notebook containing a
-markdown table, which made the route students actually use fail for everyone. With the
-table in its own file, the matrix says both things at once — the notebook route works,
-*and* this is what breaks it — and the row turns green the day upstream fixes it. Three
-routes over that one table locate the fault: nbconvert's HTML is fine, Quarto's LaTeX is
-fine, so it is nbconvert's LaTeX template.
+**The rule for splitting a construct out is whether it KILLS the render, not whether
+it fails.** A construct that renders wrong but exits 0 belongs in the full fixtures:
+it gets its own column, and the column is the attribution. A construct that stops the
+render takes every other construct in that file down with it, so it has to be alone.
 
-`check-raw-passthrough.qmd` isolates for the mirror-image reason. Its two constructs
-fail on *opposite* routes -- Typst loses a raw `\footnote{}`, LaTeX loses a literal `α`
-inside `\text{}` -- so in a full fixture each would have read as a broken route rather
-than as one property of pandoc: it forwards what it cannot parse, and every non-LaTeX
-writer then discards it. Both failures are silent and leave grammatical prose behind.
+`check-notebook-table.ipynb` is the only one that qualifies. nbconvert cannot export a
+notebook containing a markdown table -- it produces *no file at all* -- which made the
+route students actually use fail for everyone. With the table in its own file, the
+matrix says both things at once — the notebook route works, *and* this is what breaks
+it — and the row turns green the day upstream fixes it. Three routes over that one
+table locate the fault: nbconvert's HTML is fine, Quarto's LaTeX is fine, so it is
+nbconvert's LaTeX template.
 
-One thing that fixture taught, which applies to every needle here: **a needle must
+There used to be a second isolated fixture, holding the constructs pandoc forwards
+rather than parses (it is in the history if you need the name). It was retired for two
+reasons. Its constructs render without killing anything, so per-construct columns
+already gave the attribution its isolation was meant to provide. And it was organised
+by *mechanism* -- "things pandoc forwards" -- which asks a reader to know pandoc has a
+parser before they can find out whether they may write an equation. Its contents now
+live in all four full fixtures, where the question that leads to them is the one being
+asked. Note that naming a retired file here is itself caught by `make check-docs`,
+which is why this paragraph does not.
+
+One thing that fixture taught before it went, which applies to every needle here: **a
+needle must
 survive PDF text extraction, not merely be unique.** Its marker began as `RAWFN`, which
 renders correctly and extracts from the LaTeX PDF as `RA WFN`, because lualatex kerns
 the `AW` pair and pypdf reports the kern as a space. The check failed on content that

@@ -272,7 +272,8 @@ absent from Typst.
 way they reach every route, because pandoc parses them. Written as `\textbf{}`,
 `\emph{}`, `\footnote{}` or a `tabular`, they reach the LaTeX PDF and vanish from
 Typst and HTML -- and they vanish *tidily*, leaving a grammatical sentence with a
-word missing, which is why nobody notices. `check-raw-passthrough.qmd` measures this.
+word missing, which is why nobody notices. The **Footnotes** section of every full
+fixture in `mds-setup-check` measures this.
 
 **3. Inside maths, Greek is `\alpha`, never a literal `α`.** The delimiters are not a
 shield. `\text{}` and `\mathrm{}` switch back to the text font mid-equation, so
