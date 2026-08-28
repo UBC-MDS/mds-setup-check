@@ -77,20 +77,24 @@ block has drifted from them.
 
 | document | rendered by | what it proves |
 | --- | --- | --- |
-| `check-quarto-py.qmd` | `uv run quarto render` | Quarto finds this project's Python, starts a kernel, and typesets the result |
-| `check-quarto-r.qmd` | `uv run quarto render` | Quarto finds R and runs it — a different path from R Markdown |
-| `check-notebook.ipynb` | `uv run jupyter nbconvert` | the same route as JupyterLab's `File -> Save and Export Notebook As... -> PDF`, which goes through pandoc |
-| `check-notebook.ipynb` | `uv run quarto render` | the same notebook through Quarto instead — the workaround when the export menu fails |
-| `check-notebook-table.ipynb` | both of the above | isolates the one construct the export menu cannot handle, so the failure is attributable rather than just present |
-| `check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
-| `check-rmarkdown.Rmd` | `uv run quarto render` | Quarto reads `.Rmd` as well, so the same document has two routes |
+| `render-checks/check-quarto-py.qmd` | `uv run quarto render` | Quarto finds this project's Python, starts a kernel, and typesets the result |
+| `render-checks/check-quarto-r.qmd` | `uv run quarto render` | Quarto finds R and runs it — a different path from R Markdown |
+| `render-checks/check-notebook.ipynb` | `uv run jupyter nbconvert` | the same route as JupyterLab's `File -> Save and Export Notebook As... -> PDF`, which goes through pandoc |
+| `render-checks/check-notebook.ipynb` | `uv run quarto render` | the same notebook through Quarto instead — the workaround when the export menu fails |
+| `render-checks/check-notebook-table.ipynb` | both of the above | isolates the one construct the export menu cannot handle, so the failure is attributable rather than just present |
+| `render-checks/check-rmarkdown.Rmd` | `Rscript -e 'rmarkdown::render(...)'` | R, knitr, pandoc and LaTeX work together |
+| `render-checks/check-rmarkdown.Rmd` | `uv run quarto render` | Quarto reads `.Rmd` as well, so the same document has two routes |
 
-Every rendered file produced by more than one tool is named for both the document and
-the tool —
+Every fixture lives in `render-checks/`, and every rendered file lands beside its
+source there — so `make all` leaves the repository root alone, and the three scripts
+students download stay at the top where their URLs point.
+
+Each file produced by more than one tool is named for both the document and the tool —
 `check-rmarkdown-quarto-typst.pdf`, not `check-rmarkdown.pdf`. That is partly so the
-table below can be read, and partly because Quarto compiles `check-rmarkdown.Rmd`
-to an intermediate file named `check-rmarkdown.pdf` before moving it to its final
-name. A route named after its input alone gets silently eaten by the next route.
+table below can be read, and partly because Quarto compiles
+`render-checks/check-rmarkdown.Rmd` to an intermediate file named
+`check-rmarkdown.pdf` before moving it to its final name. A route named after its
+input alone gets silently eaten by the next route.
 
 R and Python live in separate documents on purpose. Putting both in one would
 need `reticulate` to locate this project's Python from inside R, which is a thing
@@ -136,31 +140,31 @@ Legend: ✅ works · ⬜ not supported by this route, by design · ❌ **broken*
 
 | input | rendered by | output | accented latin | degree sign | en dash | curly quotes | middot | literal Greek | emoji | markdown table | inline maths | display eqn | aligned eqns | numbered eqn | eqn inside $$ | pmatrix | bmatrix | cases | labelled eqn | Quarto xref | literal \eqref | unresolved xref | raw equation | raw align | raw LaTeX | markdown note | Greek in text{} | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
-| `check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| `check-quarto-py.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ✅ | ⬜ | ✅ | ✅ | ✅ |
-| `check-quarto-r.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
-| `check-quarto-r.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| `check-quarto-r.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ✅ | ⬜ | ✅ | ✅ | ✅ |
+| `render-checks/check-quarto-py.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
+| `render-checks/check-quarto-py.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| `render-checks/check-quarto-py.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ✅ | ⬜ | ✅ | ✅ | ✅ |
+| `render-checks/check-quarto-r.qmd` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
+| `render-checks/check-quarto-r.qmd` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| `render-checks/check-quarto-r.qmd` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ✅ | ⬜ | ✅ | ✅ | ✅ |
 
 **`.ipynb`**
 
 | input | rendered by | output | accented latin | degree sign | en dash | curly quotes | middot | literal Greek | emoji | markdown table | inline maths | display eqn | aligned eqns | numbered eqn | eqn inside $$ | pmatrix | bmatrix | cases | labelled eqn | Quarto xref | literal \eqref | unresolved xref | raw equation | raw align | raw LaTeX | markdown note | Greek in text{} | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `check-notebook.ipynb` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
-| `check-notebook.ipynb` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
-| `check-notebook.ipynb` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ✅ | ⬜ | ✅ | ✅ | ✅ |
-| `check-notebook.ipynb` | nbconvert | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
-| `check-notebook.ipynb` | nbconvert | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-notebook.ipynb` | nbconvert | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-notebook.ipynb` | nbconvert API | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `check-notebook-table.ipynb` | nbconvert ⚠️ | LaTeX PDF | — | — | — | — | — | — | — | ⚠️ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `check-notebook-table.ipynb` | nbconvert | HTML | — | — | — | — | — | — | — | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `check-notebook-table.ipynb` | Quarto | LaTeX PDF | — | — | — | — | — | — | — | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `render-checks/check-notebook.ipynb` | Quarto | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
+| `render-checks/check-notebook.ipynb` | Quarto | Typst PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ |
+| `render-checks/check-notebook.ipynb` | Quarto | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ✅ | ⬜ | ✅ | ✅ | ✅ |
+| `render-checks/check-notebook.ipynb` | nbconvert | LaTeX PDF | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
+| `render-checks/check-notebook.ipynb` | nbconvert | HTML | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `render-checks/check-notebook.ipynb` | nbconvert | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `render-checks/check-notebook.ipynb` | nbconvert API | WebPDF | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `render-checks/check-notebook-table.ipynb` | nbconvert ⚠️ | LaTeX PDF | — | — | — | — | — | — | — | ⚠️ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `render-checks/check-notebook-table.ipynb` | nbconvert | HTML | — | — | — | — | — | — | — | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `render-checks/check-notebook-table.ipynb` | Quarto | LaTeX PDF | — | — | — | — | — | — | — | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 
 ⚠️ **nbconvert → LaTeX PDF produces no file at all.** nbconvert's LaTeX template emits \LTcaptype{none} for a markdown table, which this TeX Live rejects with "No counter 'none' defined". A notebook containing a markdown table fails JupyterLab's PDF export for this reason, and one without a table exports fine -- which is why the table lives in a fixture of its own. Rendering the same notebook through Quarto works, table and all.
 
-**`.Rmd`** — `check-rmarkdown.Rmd`
+**`.Rmd`** — `render-checks/check-rmarkdown.Rmd`
 
 | rendered by | output | accented latin | degree sign | en dash | curly quotes | middot | literal Greek | emoji | markdown table | inline maths | display eqn | aligned eqns | numbered eqn | eqn inside $$ | pmatrix | bmatrix | cases | labelled eqn | Quarto xref | literal \eqref | unresolved xref | raw equation | raw align | raw LaTeX | markdown note | Greek in text{} | image |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -229,11 +233,12 @@ does not look for it — it creates it — so the next run makes it again.
 | `.Rprofile`, `renv/` | how R finds this project's own package library |
 | `Makefile` | installs, renders and checks; run `make` to list its targets |
 | [`CLAUDE.md`](CLAUDE.md) | context for an AI agent working here: the invariants, and what makes a check real |
-| `check-quarto-py.qmd` | Quarto fixture, Python |
-| `check-quarto-r.qmd` | Quarto fixture, R |
-| `check-notebook.ipynb` | Jupyter notebook fixture, already executed |
-| `check-notebook-table.ipynb` | one markdown table and nothing else: the single construct JupyterLab's PDF export cannot handle |
-| `check-rmarkdown.Rmd` | R Markdown fixture |
+| [`render-checks/`](render-checks/) | every fixture, and everything they render |
+| `render-checks/check-quarto-py.qmd` | Quarto fixture, Python |
+| `render-checks/check-quarto-r.qmd` | Quarto fixture, R |
+| `render-checks/check-notebook.ipynb` | Jupyter notebook fixture, already executed |
+| `render-checks/check-notebook-table.ipynb` | one markdown table and nothing else: the single construct JupyterLab's PDF export cannot handle |
+| `render-checks/check-rmarkdown.Rmd` | R Markdown fixture |
 | `ci/assert-renders.py` | checks the rendered files contain what they should, per route |
 | `ci/assert-contract.py` | checks this repo still matches what `assignment-workflow-uv.md` describes |
 | `ci/assert-docs.py` | checks every make target, fixture and script named in `README.md`, `CLAUDE.md` and `assignment-workflow-uv.md` exists |
@@ -243,7 +248,10 @@ does not look for it — it creates it — so the next run makes it again.
 | `ci/webpdf.py` | exports a notebook through the browser without nbconvert's command line, which is what breaks that route on Windows |
 | `.github/workflows/assignment-workflow.yml` | the CI described under **For instructors** below |
 | `ci/tlmgr-packages.txt` | the LaTeX packages the install guides ask for |
-| `mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
+| `render-checks/mds-logo.png` | the image every fixture embeds, so that image rendering is checked too |
+| [`demo-assignment/`](demo-assignment/) | the assignment guide as a working repo: one notebook, its own lock file, a Makefile, and the portability linter |
+| `source/lab0a`, `source/lab0b` | the two orientation labs as instructors write them, before otter-grader splits them |
+| `release/lab0a`, `release/lab0b` | the same two labs as students and the autograder receive them |
 | [`using-atkinson-hyperlegible.md`](using-atkinson-hyperlegible.md) | optional: how to set a document in the Atkinson Hyperlegible typeface |
 | `check-setup-mds.sh` | the setup check itself, the script students are told to run |
 | `check-python-installs.sh` | reports every Python already on the machine; run on its own before installing uv, and again from inside the setup check |

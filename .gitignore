@@ -12,8 +12,9 @@
 !index.html
 check-setup-mds.log
 
-# Quarto scratch
-/.quarto/
+# Quarto scratch. Unanchored: Quarto writes this beside the document it is
+# rendering, which is render-checks/ now rather than the repository root.
+.quarto/
 **/*.quarto_ipynb
 
 .ipynb_checkpoints/

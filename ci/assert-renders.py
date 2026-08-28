@@ -68,6 +68,20 @@ def is_known(name: str) -> bool:
     platforms, _ = entry
     return platforms is None or sys.platform in platforms
 
+# The fixtures and everything they render live here. ROUTES and KNOWN_TO_FAIL below
+# keep BARE filenames, because those are the labels the README's table and the failure
+# prose read; this is the only place the directory is ever joined on. Anchored to this
+# file rather than to the working directory, so the gate does not care where it is run
+# from.
+FIXTURE_DIR = "render-checks"
+_HERE = pathlib.Path(__file__).resolve().parent.parent / FIXTURE_DIR
+
+
+def fixture(name: str) -> pathlib.Path:
+    """The path of a fixture, or of something rendered from one."""
+    return _HERE / name
+
+
 QMD_PY, QMD_R = "check-quarto-py.qmd", "check-quarto-r.qmd"
 IPYNB, RMD = "check-notebook.ipynb", "check-rmarkdown.Rmd"
 # The one construct JupyterLab's PDF export cannot handle, kept on its own so the
@@ -302,7 +316,7 @@ def source_text(name: str) -> str:
     same handful of files the same questions.
     """
     if name not in _source_cache:
-        raw = pathlib.Path(name).read_text(encoding="utf-8")
+        raw = fixture(name).read_text(encoding="utf-8")
         if name.endswith(".ipynb"):
             import json
             raw = "\n".join("".join(cell["source"])
@@ -334,11 +348,11 @@ def main() -> int:
     missing, broken, ok, stale = [], [], [], []
 
     for name, (label, kind, source) in ROUTES.items():
-        path = pathlib.Path(name)
+        path = fixture(name)
         # An output older than the document it came from is last month's answer. make
         # rebuilds nothing when the outputs are newer than their sources, so without this
         # a re-run on a since-broken machine re-reads the old files and reports success.
-        if path.exists() and path.stat().st_mtime < pathlib.Path(source).stat().st_mtime:
+        if path.exists() and path.stat().st_mtime < fixture(source).stat().st_mtime:
             stale.append((label, name, source))
             print(f"  STALE    {label:<24} {name} is older than {source}")
             continue

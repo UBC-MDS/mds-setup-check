@@ -147,7 +147,7 @@ jobs:
         run: make -k render || true
 
       - name: Show which outputs were produced
-        run: ls -la check-*.pdf check-*.html || true
+        run: ls -la render-checks/check-*.pdf render-checks/check-*.html || true
 
       - name: Check the rendered documents contain what they should
         run: make check
@@ -348,6 +348,10 @@ jobs:
         with:
           name: rendered-${{ matrix.os }}
           path: |
-            check-*.pdf
-            check-*.html
-          if-no-files-found: warn
+            render-checks/check-*.pdf
+            render-checks/check-*.html
+          # error, not warn: @actions/glob will not let a `*` cross a `/`, so an
+          # unprefixed glob silently matches nothing after the move. There is no run in
+          # which zero rendered documents is a correct outcome, so the last remaining
+          # silent path-dependency in this workflow becomes a red build instead.
+          if-no-files-found: error
