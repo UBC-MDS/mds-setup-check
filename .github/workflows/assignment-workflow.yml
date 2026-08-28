@@ -57,6 +57,11 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          # Scoped to the root lock file. The default is `**/uv.lock`, which also
+          # matches demo-assignment/uv.lock -- a project this workflow never installs.
+          # A change there would rekey the cache for the project that IS installed
+          # here, turning every run into a cache miss for no reason.
+          cache-dependency-glob: uv.lock
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
@@ -182,6 +187,7 @@ jobs:
       - name: Serve this branch to the setup check
         run: |
           uv run --no-sync python -m http.server 8127 --bind 127.0.0.1 > "$RUNNER_TEMP/http.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/http.pid"
           for _ in $(seq 1 30); do
             curl -Ssf http://127.0.0.1:8127/check-python-installs.sh -o /dev/null && break
             sleep 1
@@ -310,6 +316,18 @@ jobs:
 
           echo "the setup check found its fixtures, rendered through Quarto, and recorded"
           echo "no environment variables"
+
+      # This server is started with `uv run`, so leaving it alive leaves a uv process
+      # holding the cache for the rest of the job -- including the post-job
+      # `uv cache prune`, which produced no output and was killed at exactly 300s the
+      # first time a cache miss made it run at all. Stopping the server is right
+      # regardless of whether it turns out to be what prune was waiting on.
+      - name: Stop the local server
+        if: always()
+        run: |
+          pid=$(cat "$RUNNER_TEMP/http.pid" 2>/dev/null || true)
+          [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+          echo "stopped ${pid:-none}"
 
       - name: Upload the rendered documents
         if: always()
