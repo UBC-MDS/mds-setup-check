@@ -200,6 +200,15 @@ renumbering the guide cannot strand it.
 Neither can check whether the prose is *true*, so when behaviour changes, update the
 document in the same commit.
 
+**`mds-demo-assignment/DSCI_521_LAB_ORIENTATION_*/` are build output, not sources.**
+`package-assignment.py` deletes and recreates them on every `make all`, so an edit made
+there is reverted by the next build and nothing says so. The edit belongs in
+`source/<lab>/` or in `student-template/<kind>/`. Nothing checks this, and it has now
+been got wrong twice: `bd03691` fixed the R ignore rules only in the handout, and
+`7137844` rewrote a paragraph of `lab0b.Rmd` only in the handout. Both were recovered
+by hand. If you regenerate and a handout comes back changed, that is an edit somebody
+lost, not noise -- port it to the source before committing.
+
 ## Deliberate choices that look accidental
 
 - `ipykernel` is a real dependency, not a dev dependency. `jupyterlab` would pull it in
@@ -226,6 +235,35 @@ document in the same commit.
   this project install its own R packages reproducibly".
 - The R version in `renv.lock` matches the install guides. renv warns, but proceeds, on
   a different minor version.
+- The handout `.Rproj` is called `assignment.Rproj` in **every** assignment, and is
+  copied under that name rather than renamed to match the folder. Two facts in the
+  RStudio source make the fixed name free, and both were checked rather than assumed:
+  `ProjectPopupMenu.getProjectDisplayName()` falls through to `ProjectMRUList`, which
+  builds its label from `getParentPathString()`, so the toolbar shows the *directory*
+  (`DSCI_521_LAB1_USERNAME`, which is what a student wants to see) and never the file
+  stem; and rstudio/rstudio#4387, in 1.2, changed opening a directory to "use an .Rproj
+  in the directory if we can, regardless of its name" instead of writing a second one.
+  Before that fix a mismatched name really did produce duplicate project files, which is
+  where the folklore about matching them comes from. An instructor who wants a label
+  other than the folder name can set `ProjectName:` in the file: it is the `project_name`
+  user pref, "User-provided name for the currently opened R project", and it takes
+  priority over the MRU label. It is deliberately not in the template, because setting it
+  is per-assignment work and leaving it generic would label every lab the same.
+- `.gitignore` and `Makefile` live in `student-template/<kind>/`, not in the `workspace`
+  list `package-assignment.py` copies from `mds-demo-assignment/`. They are the files
+  that genuinely differ by language, and keeping the ignore rules in the shared list is
+  how they came to be hand-edited into a generated directory. `spec["template"]` names
+  the required files, so a rename fails the build rather than shipping a handout with no
+  `.gitignore` in it.
+- The handout ignore rules are github/gitignore's `R.gitignore` and `Python.gitignore`
+  verbatim, below an MDS block, with one deletion: `vignettes/*.html` and
+  `vignettes/*.pdf` are dropped from the R one, because a rendered document is the
+  submission here. `docs/` is deliberately **kept**, even though it means an R lab
+  cannot ship a folder by that name -- it is upstream's pkgdown rule, and the point of
+  pasting the file verbatim is that it stays recognisable as the upstream file.
+  `mds-demo-assignment/.gitignore` is now the instructor's alone; it still ignores
+  `*.pdf` and `*.html`, which is what keeps the demo's own renders out of *this*
+  repository, and it never reaches a student.
 
 ## What a green build does not prove
 

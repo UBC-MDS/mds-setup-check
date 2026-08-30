@@ -2,9 +2,20 @@
 """Turn otter's student output into the folder a student is actually handed.
 
 `otter assign` produces the assignment and its tests and nothing else. This adds what a
-student also needs: for Python a `pyproject.toml`, `uv.lock` and `.python-version`; for
-both a `.gitignore` and a `Makefile`. The R one carries no lock file, because R packages
-come from the library the MDS install guides set up.
+student also needs. Two sources, and the difference matters:
+
+  * `workspace` names files taken from this directory, which are the same whatever the
+    language: `.gitattributes`, plus for Python the `pyproject.toml`, `uv.lock` and
+    `.python-version`. The R one carries no lock file, because R packages come from the
+    library the MDS install guides set up.
+  * `student-template/<kind>/` holds everything that differs by language: the
+    `.gitignore`, the `Makefile`, and for R the `assignment.Rproj`. These live there and
+    nowhere else. They used to be edited in the handout directories, which this script
+    deletes and rebuilds, so every fix to them was reverted by the next run.
+
+Every file is copied under its own name, the `.Rproj` included. RStudio takes the name
+it displays from the folder, not from the project file, so one fixed filename serves
+every assignment and every student.
 
 Usage:  python package-assignment.py --lab lab0a --kind py --into DSCI_521_LAB_ORIENTATION_PY
         python package-assignment.py --lab lab0b --kind r  --into DSCI_521_LAB_ORIENTATION_R
@@ -23,9 +34,11 @@ HERE = pathlib.Path(__file__).resolve().parent
 # pick up a newer pandas the week an assignment is due.
 KIND = {
     "py": {"suffix": ".ipynb",
-           "workspace": ["pyproject.toml", "uv.lock", ".gitignore", ".gitattributes"]},
+           "workspace": ["pyproject.toml", "uv.lock", ".gitattributes"],
+           "template": [".gitignore", "Makefile", ".python-version"]},
     "r": {"suffix": ".Rmd",
-          "workspace": [".gitignore", ".gitattributes"]},
+          "workspace": [".gitattributes"],
+          "template": [".gitignore", "Makefile", "assignment.Rproj"]},
 }
 
 
@@ -77,6 +90,12 @@ def main() -> int:
     if not template.is_dir():
         missing.append(f"student-template/{args.kind}/")
     else:
+        # Named individually rather than trusted to the directory listing: a file
+        # renamed here would otherwise just stop being copied, and the handout would
+        # ship without its .gitignore or its .Rproj and say nothing about it.
+        for name in spec["template"]:
+            if not (template / name).is_file():
+                missing.append(f"student-template/{args.kind}/{name}")
         for src in sorted(template.iterdir()):
             if src.is_file():
                 shutil.copy2(src, out / src.name)

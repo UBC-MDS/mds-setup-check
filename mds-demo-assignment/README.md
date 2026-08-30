@@ -60,9 +60,40 @@ that depends on a variable defined in another cell.
 `package` copies `release/<lab>/student/` into the handout directory and adds what the
 assignment alone does not have: for Python `pyproject.toml`, `uv.lock` and
 `.python-version`; for R nothing of the sort, because R packages come from the library
-the install guides set up. Both get a `.gitignore`, `.gitattributes` and a `Makefile`.
+the install guides set up. Both get a `.gitattributes`, and from
+`student-template/<kind>/` a `.gitignore` and a `Makefile`, R additionally a `.Rproj`.
 It clears saved notebook output and **refuses to write the folder if a `BEGIN SOLUTION`
 marker survived**. `uv.lock` is copied, not regenerated.
+
+**Edit `source/` and `student-template/`, never a handout directory.** `package`
+deletes and rewrites the handout every run, so a change made there is reverted by the
+next build without saying so.
+
+The handout `.gitignore`s carry github/gitignore's `R.gitignore` and
+`Python.gitignore`, with nothing in them that would ignore a `.pdf` or `.html`
+submission. One upstream rule is worth knowing: `R.gitignore` ignores `docs/`, which is
+its pkgdown rule, so an R lab cannot hand out a folder by that name.
+
+### The R project file
+
+Copy `student-template/r/assignment.Rproj` into every R assignment, unchanged and under
+that same name. A student who clones the repository then gets an RStudio project on a
+double click rather than a folder of loose files.
+
+1. **Do not rename it, and do not generate one per student.** RStudio takes the name it
+   shows in the Projects toolbar from the *folder*, so a student whose repository is
+   `DSCI_521_LAB1_USERNAME` sees exactly that, whatever the file is called. Since
+   RStudio 1.2 it also opens whichever `.Rproj` it finds in a directory rather than
+   writing a second one when the names differ, so the mismatch is safe as well as
+   invisible.
+2. **Take the settings as they are.** Three of them are doing work. `LaTeX: XeLaTeX`,
+   because RStudio's Knit button otherwise runs pdfLaTeX, which cannot typeset the
+   accented characters that turn up in real student work and fails with an error that
+   does not point at the engine. `RestoreWorkspace: No` and `SaveWorkspace: No`, so a
+   saved `.RData` cannot make code that no longer runs look as though it still does.
+   `BuildType: Makefile`, so the Build pane runs the assignment's own `make`.
+3. **Positron costs nothing here.** It opens the folder as a workspace and never reads
+   the file, so one handout serves a student using either editor.
 
 ### Writing questions
 

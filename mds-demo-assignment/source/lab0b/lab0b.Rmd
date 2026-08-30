@@ -19,8 +19,16 @@ the same export routes, the same rule about a document that has to run top to bo
 What changes is the file: an **R Markdown** document rather than a notebook.
 
 The difference worth knowing on day one is that this file is **plain text**. Prose is
-written directly, with no cell around it, and code goes in a *chunk* that starts with
-```` ```{r} ```` and ends with ```` ``` ````. Open it in a text editor and it still
+written directly, with no cell around it, and code goes in a *chunk* that starts and
+ends with a code fence:
+
+```{r}
+#| echo: fenced
+
+# your code here
+```
+
+Open it in a text editor and it still
 reads as a document, which is not true of an `.ipynb`.
 
 Work top to bottom, running each chunk with its ▶ button or `Ctrl+Shift+Enter`.

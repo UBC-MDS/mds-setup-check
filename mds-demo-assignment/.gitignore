@@ -1,8 +1,14 @@
+# The instructor's side only. What a student gets is built from
+# student-template/<kind>/.gitignore, and does NOT ignore *.pdf or *.html,
+# because in their repository those are the submission.
+
 .venv/
 __pycache__/
 .ipynb_checkpoints/
 
-# Render output
+# Render output. Here these are demo artefacts, and the rules reach down into the
+# generated handout directories too, which is why the demo's own lab0b.pdf stays
+# untracked in this repository.
 *.pdf
 *.html
 /.quarto/
