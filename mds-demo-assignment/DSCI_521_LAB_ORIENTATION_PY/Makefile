@@ -13,7 +13,7 @@ setup:  ## Create .venv and install the exact package versions this lab needs
 	uv sync
 
 lab:  ## Open the assignment in JupyterLab
-	uv run jupyter lab lab0a.ipynb
+	uv run jupyter lab
 
 # --execute because Quarto does NOT run a notebook by default: without it you render a
 # PDF of whatever output was saved, which is how a submitted PDF stops matching the code
